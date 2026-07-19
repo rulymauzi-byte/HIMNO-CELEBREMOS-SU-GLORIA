@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Himnario</title>
+<title>Celebremos SG Mauzi</title>
+<meta name="description" content="Celebremos su Gloria: himnario digital Mauzi con letras y audios sincronizados.">
 
 <style>
 * {
@@ -317,13 +318,143 @@ body {
     margin: 10px 0;
     transition: font-size 0.2s ease;
 }
+
+/* ========== INSTALACIÓN DE LA APLICACIÓN ========== */
+.install-area {
+    display: flex;
+    justify-content: center;
+    padding: 8px 12px 4px;
+}
+
+.install-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 150px;
+    padding: 11px 22px;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 25px;
+    background: linear-gradient(145deg, #d4af37, #9b7207);
+    color: #fff;
+    font-family: "Georgia", serif;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    transition: transform .15s ease, box-shadow .2s ease;
+}
+
+.install-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+}
+
+.install-btn:active { transform: scale(.96); }
+
+.install-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,.72);
+    backdrop-filter: blur(5px);
+}
+
+.install-modal.visible { display: flex; }
+
+.install-card {
+    width: min(430px, 100%);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 25px 22px 20px;
+    border: 1px solid rgba(212,175,55,.6);
+    border-radius: 18px;
+    background: linear-gradient(155deg, #173746, #0d2029);
+    color: white;
+    box-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+
+.install-card h2 {
+    margin-bottom: 12px;
+    color: #f1cc55;
+    font-size: 22px;
+    text-align: center;
+}
+
+.install-card p, .install-card li {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.install-card ol { margin: 14px 0 18px 24px; }
+.install-card li { margin-bottom: 9px; padding-left: 3px; }
+
+.install-close {
+    display: block;
+    width: 100%;
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #d4af37, #9b7207);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.install-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 6000;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: rgba(12,31,40,.96);
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    box-shadow: 0 5px 20px rgba(0,0,0,.45);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 20px);
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+.install-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
 </style>
 <base target="_blank">
+
+<!-- ===== PWA CONFIGURACIÓN ===== -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d4af37">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Celebremos SG Mauzi">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<!-- ============================== -->
 </head>
 
 <body>
 
-<div class="titulo-principal">Mi Celebremos Digital</div>
+<div class="titulo-principal">Celebremos SG Mauzi</div>
+
+<div class="install-area" id="installArea">
+    <button class="install-btn" id="installBtn" type="button" onclick="instalarApp()" aria-label="Instalar Celebremos SG Mauzi">
+        <span aria-hidden="true">⬇</span> Instalar
+    </button>
+</div>
 
 <div class="container">
 
@@ -361,14 +492,138 @@ body {
 
 </div>
 
+<div class="install-modal" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installModalTitle" onclick="cerrarGuiaInstalacion(event)">
+    <div class="install-card">
+        <h2 id="installModalTitle">Instalar aplicación</h2>
+        <div id="installModalContent"></div>
+        <button class="install-close" type="button" onclick="cerrarGuiaInstalacion()">Entendido</button>
+    </div>
+</div>
+
+<div class="install-toast" id="installToast" role="status" aria-live="polite"></div>
+
 <script>
+
+// ========== INSTALACIÓN PWA (ANDROID, IPHONE Y COMPUTADORA) ==========
+let eventoInstalacion = null;
+
+function estaInstalada() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches ||
+           window.navigator.standalone === true;
+}
+
+function esIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function actualizarEstadoInstalacion() {
+    const area = document.getElementById('installArea');
+    if (!area) return;
+    const himnoVisible = document.getElementById('himno') &&
+                         document.getElementById('himno').style.display === 'block';
+    area.style.display = (estaInstalada() || himnoVisible) ? 'none' : 'flex';
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    eventoInstalacion = event;
+    actualizarEstadoInstalacion();
+});
+
+window.addEventListener('appinstalled', () => {
+    eventoInstalacion = null;
+    actualizarEstadoInstalacion();
+    mostrarAviso('Celebremos SG Mauzi se instaló correctamente.');
+});
+
+async function instalarApp() {
+    if (estaInstalada()) {
+        mostrarAviso('La aplicación ya está instalada.');
+        actualizarEstadoInstalacion();
+        return;
+    }
+
+    if (esIOS()) {
+        abrirGuiaInstalacion(
+            'Instalar en iPhone o iPad',
+            '<p>Apple requiere estos pasos una sola vez:</p>' +
+            '<ol><li>Abra esta página con <strong>Safari</strong>.</li>' +
+            '<li>Toque el botón <strong>Compartir</strong> (cuadro con flecha hacia arriba).</li>' +
+            '<li>Seleccione <strong>Añadir a pantalla de inicio</strong>.</li>' +
+            '<li>Toque <strong>Añadir</strong>.</li></ol>' +
+            '<p>Después podrá abrirla como una aplicación, sin la barra de direcciones.</p>'
+        );
+        return;
+    }
+
+    if (eventoInstalacion) {
+        const promptGuardado = eventoInstalacion;
+        eventoInstalacion = null;
+        await promptGuardado.prompt();
+        const resultado = await promptGuardado.userChoice;
+        if (resultado.outcome === 'accepted') {
+            mostrarAviso('Instalación aceptada.');
+        } else {
+            mostrarAviso('Puede instalarla más adelante con este mismo botón.');
+        }
+        return;
+    }
+
+    if (!window.isSecureContext) {
+        abrirGuiaInstalacion(
+            'Falta publicar la aplicación',
+            '<p>La instalación se habilitará cuando esta carpeta esté publicada en un sitio con conexión segura <strong>HTTPS</strong>.</p>'
+        );
+        return;
+    }
+
+    abrirGuiaInstalacion(
+        'Preparando instalación',
+        '<p>Use <strong>Chrome</strong>, <strong>Edge</strong> o <strong>Samsung Internet</strong>. Espere unos segundos y vuelva a tocar el botón <strong>Instalar</strong>; aparecerá la ventana de instalación del teléfono.</p>'
+    );
+}
+
+function abrirGuiaInstalacion(titulo, contenido) {
+    document.getElementById('installModalTitle').textContent = titulo;
+    document.getElementById('installModalContent').innerHTML = contenido;
+    document.getElementById('installModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarGuiaInstalacion(event) {
+    if (event && event.target !== document.getElementById('installModal')) return;
+    document.getElementById('installModal').classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+let temporizadorAviso;
+function mostrarAviso(mensaje) {
+    const aviso = document.getElementById('installToast');
+    aviso.textContent = mensaje;
+    aviso.classList.add('visible');
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => aviso.classList.remove('visible'), 3200);
+}
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {
+            console.warn('No se pudo registrar el modo instalable.');
+        });
+    });
+}
+
+window.addEventListener('DOMContentLoaded', actualizarEstadoInstalacion);
+window.matchMedia('(display-mode: standalone)').addEventListener?.('change', actualizarEstadoInstalacion);
 
 // ========== ENLACES DE AUDIO ==========
 // Aquí pones el link .mp3 de cada himno.
 const enlacesAudio = {
 
-    2: "https://dl.dropboxusercontent.com/scl/fi/x2hgpr2g45baqb5xjdqg5/002-Celebremos-su-gloria.mp3?rlkey=jadq75bwzwsar67cz77t5cgfj&st=6mfzc1j4&dl=0",
-    3: "https://dl.dropboxusercontent.com/scl/fi/1h9tud1ffq2tdkduohhd4/003-Santo-Santo-grande-eterno-Dios.mp3?rlkey=fidf43ec27b3lsk5bqou3reid&st=u1tbeq1h&dl=0",
+    2: "https://dl.dropboxusercontent.com/scl/fi/x2hgpr2g45baqb5xjdqg5/002-Celebremos-su-gloria.mp3?rlkey=jadq75bwzwsar67cz77t5cgfj&st=6mfzc1j4&dl=1",
+    3: "https://dl.dropboxusercontent.com/scl/fi/1h9tud1ffq2tdkduohhd4/003-Santo-Santo-grande-eterno-Dios.mp3?rlkey=fidf43ec27b3lsk5bqou3reid&st=u1tbeq1h&dl=1",
     4: "https://www.dropbox.com/scl/fi/7fb107x7244gzk35sgw4q/004-Santo-Santo-Santo.mp3?rlkey=41khuifhh1ss6oi5e1bxpjaq8&st=4n446wvh&dl=1",
     5: "https://www.dropbox.com/scl/fi/vk391k66sqlamvv5qcth0/005-Cantad-alegres-al-Se-or.mp3?rlkey=2ly9z3ekr0mzfzhh2oodas0zy&st=wnq9sgpe&dl=1",
     6: "link",
@@ -381,643 +636,637 @@ const enlacesAudio = {
     13: "https://www.dropbox.com/scl/fi/u1syx0jrhvrzasf7777pl/013-Gloria-Gloria.mp3?rlkey=rfjj04kba9tp1ti58v9y711w2&st=84dnvf1c&dl=1",
 
     15: "https://www.dropbox.com/scl/fi/py80en3f9gt1hm3mgpup3/015-A-Dios-de-Abraham-loor.mp3?rlkey=pluc5l6xf2txb5m8d3jigwfor&st=1qyllbqq&dl=1",
-    16: "link",
-    17: "link",
-    18: "link",
-    19: "link",
-    20: "link",
-    21: "link",
-    22: "link",
-    23: "link",
-    24: "link",
-    25: "link",
-    26: "link",
-    27: "link",
-    28: "link",
-    29: "link",
-    30: "link",
-    31: "link",
-    32: "link",
-    33: "link",
-    34: "link",
-    35: "link",
-    36: "link",
-    37: "link",
-    38: "link",
-    39: "link",
-    40: "link",
-    41: "link",
-    42: "link",
-    43: "link",
-    44: "link",
-    45: "link",
-    46: "link",
-    47: "link",
-    48: "link",
-    49: "link",
-    50: "link",
-    51: "link",
-    52: "link",
-    53: "link",
-    54: "link",
-    55: "link",
-    56: "link",
-    57: "link",
-    58: "link",
-    59: "link",
-    60: "link",
-    61: "link",
-    62: "link",
-    63: "link",
-    64: "link",
-    65: "link",
-    66: "link",
-    67: "link",
-    68: "link",
-    69: "link",
-    70: "link",
-    71: "link",
-    72: "link",
-    73: "link",
-    74: "link",
-    75: "link",
-    76: "link",
-    77: "link",
-    78: "link",
-    79: "link",
-    80: "link",
-    81: "link",
-    82: "link",
-    83: "link",
-    84: "link",
-    85: "link",
-    86: "link",
-    87: "link",
-    88: "link",
-    89: "link",
-    90: "link",
-    91: "link",
-    92: "link",
-    93: "link",
-    94: "link",
-    95: "link",
-    96: "link",
-    97: "link",
-    98: "link",
-    99: "link",
-    100: "link",
-    101: "link",
-    102: "link",
-    103: "link",
-    104: "link",
-    105: "link",
-    106: "link",
-    107: "link",
-    108: "link",
-    109: "link",
-    110: "link",
-    111: "link",
-    112: "link",
-    113: "link",
-    114: "link",
-    115: "link",
-    116: "link",
-    117: "link",
-    118: "link",
-    119: "link",
-    120: "link",
-    121: "link",
-    122: "link",
-    123: "link",
-    124: "link",
-    125: "link",
-    126: "link",
-    127: "link",
-    128: "link",
-    129: "link",
-    130: "link",
-    131: "link",
-    132: "link",
-    133: "link",
-    134: "link",
-    135: "link",
-    136: "link",
-    137: "link",
-    138: "link",
-    139: "link",
-    140: "link",
-    141: "link",
-    142: "link",
-    143: "link",
-    144: "link",
-    145: "link",
-    146: "link",
-    147: "link",
-    148: "link",
-    149: "link",
-    150: "link",
-    151: "link",
-    152: "link",
-    153: "link",
-    154: "link",
-    155: "link",
-    156: "link",
-    157: "link",
-    158: "link",
-    159: "link",
-    160: "link",
-    161: "link",
-    162: "link",
-    163: "link",
-    164: "link",
-    165: "link",
-    166: "link",
-    167: "link",
-    168: "link",
-    169: "link",
-    170: "link",
-    171: "link",
-    172: "link",
-    173: "link",
-    174: "link",
-    175: "link",
-    176: "link",
-    177: "link",
-    178: "link",
-    179: "link",
-    180: "link",
-    181: "link",
-    182: "link",
-    183: "link",
-    184: "link",
-    185: "link",
-    186: "link",
-    187: "link",
-    188: "link",
-    189: "link",
-    190: "link",
-    191: "link",
-    192: "link",
-    193: "link",
-    194: "link",
-    195: "link",
-    196: "link",
-    197: "link",
-    198: "link",
-    199: "link",
-    200: "link",
-    201: "link",
-    202: "link",
-    203: "link",
-    204: "link",
-    205: "link",
-    206: "link",
-    207: "link",
-    208: "link",
-    209: "link",
-    210: "link",
-    211: "link",
-    212: "link",
-    213: "link",
-    214: "link",
-    215: "link",
-    216: "link",
-    217: "link",
-    218: "link",
-    219: "link",
-    220: "link",
-    221: "link",
-    222: "link",
-    223: "link",
-    224: "link",
-    225: "link",
-    226: "link",
-    227: "link",
-    228: "link",
-    229: "link",
-    230: "link",
-    231: "link",
-    232: "link",
-    233: "link",
-    234: "link",
-    235: "link",
-    236: "link",
-    237: "link",
-    238: "link",
-    239: "link",
-    240: "link",
-    241: "link",
-    242: "link",
-    243: "link",
-    244: "link",
-    245: "link",
-    246: "link",
-    247: "link",
-    248: "link",
-    249: "link",
-    250: "link",
-    251: "link",
-    252: "link",
-    253: "link",
-    254: "link",
-    255: "link",
-    256: "link",
-    257: "link",
-    258: "link",
-    259: "link",
-    260: "link",
-    261: "link",
-    262: "link",
-    263: "link",
-    264: "link",
-    265: "link",
-    266: "link",
-    267: "link",
-    268: "link",
-    269: "link",
-    270: "link",
-    271: "link",
-    272: "link",
-    273: "link",
-    274: "link",
-    275: "link",
-    276: "link",
-    277: "link",
-    278: "link",
-    279: "link",
-    280: "link",
-    281: "link",
-    282: "link",
-    283: "link",
-    284: "link",
-    285: "link",
-    286: "link",
-    287: "link",
-    288: "link",
-    289: "link",
-    290: "link",
-    291: "link",
-    292: "link",
-    293: "link",
-    294: "link",
-    295: "link",
-    296: "link",
-    297: "link",
-    298: "link",
-    299: "link",
-    300: "link",
-    301: "link",
-    302: "link",
-    303: "link",
-    304: "link",
-    305: "link",
-    306: "link",
-    307: "link",
-    308: "link",
-    309: "link",
-    310: "link",
-    311: "link",
-    312: "link",
-    313: "link",
-    314: "link",
-    315: "link",
-    316: "link",
-    317: "link",
-    318: "link",
-    319: "link",
-    320: "link",
-    321: "link",
-    322: "link",
-    323: "link",
-    324: "link",
-    325: "link",
-    326: "link",
-    327: "link",
-    328: "link",
-    329: "link",
-    330: "link",
-    331: "link",
-    332: "link",
-    333: "link",
-    334: "link",
-    335: "link",
-    336: "link",
-    337: "link",
-    338: "link",
-    339: "link",
-    340: "link",
-    341: "link",
-    342: "link",
-    343: "link",
-    344: "link",
-    345: "link",
-    346: "link",
-    347: "link",
-    348: "link",
-    349: "link",
-    350: "link",
-    351: "link",
-    352: "link",
-    353: "link",
-    354: "link",
-    355: "link",
-    356: "link",
-    357: "link",
-    358: "link",
-    359: "link",
-    360: "link",
-    361: "link",
-    362: "link",
-    363: "link",
-    364: "link",
-    365: "link",
-    366: "link",
-    367: "link",
-    368: "link",
-    369: "link",
-    370: "link",
-    371: "link",
-    372: "link",
-    373: "link",
-    374: "link",
-    375: "link",
-    376: "link",
-    377: "link",
-    378: "link",
-    379: "link",
-    380: "link",
-    381: "link",
-    382: "link",
-    383: "link",
-    384: "link",
-    385: "link",
-    386: "link",
-    387: "link",
-    388: "link",
-    389: "link",
-    390: "link",
-    391: "link",
-    392: "link",
-    393: "link",
-    394: "link",
-    395: "link",
-    396: "link",
-    397: "link",
-    398: "link",
-    399: "link",
-    400: "link",
-    401: "link",
-    402: "link",
-    403: "link",
-    404: "link",
-    405: "link",
-    406: "link",
-    407: "link",
-    408: "link",
-    409: "link",
-    410: "link",
-    411: "link",
-    412: "link",
-    413: "link",
-    414: "link",
-    415: "link",
-    416: "link",
-    417: "link",
-    418: "link",
-    419: "link",
-    420: "link",
-    421: "link",
-    422: "link",
-    423: "link",
-    424: "link",
-    425: "link",
-    426: "link",
-    427: "link",
-    428: "link",
-    429: "link",
-    430: "link",
-    431: "link",
-    432: "link",
-    433: "link",
-    434: "link",
-    435: "link",
-    436: "link",
-    437: "link",
-    438: "link",
-    439: "link",
-    440: "link",
-    441: "link",
-    442: "link",
-    443: "link",
-    444: "link",
-    445: "link",
-    446: "link",
-    447: "link",
-    448: "link",
-    449: "link",
-    450: "link",
-    451: "link",
-    452: "link",
-    453: "link",
-    454: "link",
-    455: "link",
-    456: "link",
-    457: "link",
-    458: "link",
-    459: "link",
-    460: "link",
-    461: "link",
-    462: "link",
-    463: "link",
-    464: "link",
-    465: "link",
-    466: "link",
-    467: "link",
-    468: "link",
-    469: "link",
-    470: "link",
-    471: "link",
-    472: "link",
-    473: "link",
-    474: "link",
-    475: "link",
-    476: "link",
-    477: "link",
-    478: "link",
-    479: "link",
-    480: "link",
-    481: "link",
-    482: "link",
-    483: "link",
-    484: "link",
-    485: "link",
-    486: "link",
-    487: "link",
-    488: "link",
-    489: "link",
-    490: "link",
-    491: "link",
-    492: "link",
-    493: "link",
-    494: "link",
-    495: "link",
-    496: "link",
-    497: "link",
-    498: "link",
-    499: "link",
-    500: "link",
-    501: "link",
-    502: "link",
-    503: "link",
-    504: "link",
-    505: "link",
-    506: "link",
-    507: "link",
-    508: "link",
-    509: "link",
-    510: "link",
-    511: "link",
-    512: "link",
-    513: "link",
-    514: "link",
-    515: "link",
-    516: "link",
-    517: "link",
-    518: "link",
-    519: "link",
-    520: "link",
-    521: "link",
-    522: "link",
-    523: "link",
-    524: "link",
-    525: "link",
-    526: "link",
-    527: "link",
-    528: "link",
-    529: "link",
-    530: "link",
-    531: "link",
-    532: "link",
-    533: "link",
-    534: "link",
-    535: "link",
-    536: "link",
-    537: "link",
-    538: "link",
-    539: "link",
-    540: "link",
-    541: "link",
-    542: "link",
-    543: "link",
-    544: "link",
-    545: "link",
-    546: "link",
-    547: "link",
-    548: "link",
-    549: "link",
-    550: "link",
-    551: "link",
-    552: "link",
-    553: "link",
-    554: "link",
-    555: "link",
-    556: "link",
-    557: "link",
-    558: "link",
-    559: "link",
-    560: "link",
-    561: "link",
-    562: "link",
-    563: "link",
-    564: "link",
-    565: "link",
-    566: "link",
-    567: "link",
-    568: "link",
-    569: "link",
-    570: "link",
-    571: "link",
-    572: "link",
-    573: "link",
-    574: "link",
-    575: "link",
-    576: "link",
-    577: "link",
-    578: "link",
-    579: "link",
-    580: "link",
-    581: "link",
-    582: "link",
-    583: "link",
-    584: "link",
-    585: "link",
-    586: "link",
-    587: "link",
-    588: "link",
-    589: "link",
-    590: "link",
-    591: "link",
-    592: "link",
-    593: "link",
-    594: "link",
-    595: "link",
-    596: "link",
-    597: "link",
-    598: "link",
-    599: "link",
-    600: "link",
-    601: "link",
-    602: "link",
-    603: "link",
-    604: "link",
-    605: "link",
-    606: "link",
-    607: "link",
-    608: "link",
-    609: "link",
-    610: "link",
-    611: "link",
-    612: "link",
-    613: "link",
-    614: "link",
-    615: "link",
-    616: "link",
-    617: "link",
-    618: "link",
-    619: "link",
-    620: "link",
-    621: "link",
-    622: "link",
-    623: "link",
-    624: "link",
-    625: "link",
-    626: "link",
-    627: "link",
-    628: "link",
-    629: "link",
-    630: "link",
-    631: "link",
-    632: "link",
-    633: "link",
-    634: "link",
-    635: "link",
-    636: "link",
-    637: "link",
-    638: "link",
-    639: "link",
-    640: "link",
-    641: "link",
-    642: "link",
-    643: "link",
-    644: "link",
-    645: "link",
-    646: "link",
-    647: "link",
-    648: "link",
-    649: "link",
-    650: "link",
-    651: "link",
-    652: "link"
+    16: "https://www.dropbox.com/scl/fi/vr35jqbj3nq3cr0nt83x9/016-Alma-bendice-al-Se-or.mp3?rlkey=ua6e1ny1p3x5rnw4ow6qnunpw&st=hy08fnjw&dl=1",
+
+    18: "https://www.dropbox.com/scl/fi/qmepl3ccesx1lt5pk48qe/018-Gloria-a-tu-nombre-oh-Dios.mp3?rlkey=qvq03urz8gydk4tww5uoro5kp&st=p46oskid&dl=1",
+    19: "https://www.dropbox.com/scl/fi/brf9751nydzj50f3bxs2z/019-Levantaos-Bendecid.mp3?rlkey=bcty1wnqsvgebthg8jkidmchu&st=b0y8siyz&dl=1",
+    20: "https://www.dropbox.com/scl/fi/brf9751nydzj50f3bxs2z/019-Levantaos-Bendecid.mp3?rlkey=bcty1wnqsvgebthg8jkidmchu&st=6zu9lxno&dl=1",
+    21: "https://www.dropbox.com/scl/fi/xnbeiiejf3w4g2k5fze3g/021-Te-alabar-Se-or.mp3?rlkey=7hliivsugo7hjb4t3l55k7tbu&st=2o3hb38c&dl=1",
+    22: "https://www.dropbox.com/scl/fi/qpien6m09wxt9346tiifs/022-Bendecir-al-Se-or.mp3?rlkey=dgul9t3vow6kg5pb3fgl9tqwn&st=adfraijj&dl=1",
+    23: "https://www.dropbox.com/scl/fi/kaygrcq575rebgndlmehl/023-Santo-es-el-Se-or.mp3?rlkey=jwf2qqyzbq83b2fzbyjko3ruk&st=49p21qh4&dl=1",
+    24: "https://www.dropbox.com/scl/fi/yiywch3hyzynhj13qv2kx/024-Bendito-es-el-Se-or.mp3?rlkey=vs7vmywyq3uakiksepukk9ksc&st=jlp9a04w&dl=1",
+    25: "https://www.dropbox.com/scl/fi/6808p5swsdu974ncolkqz/025-De-Jehov-Cantar.mp3?rlkey=f82eivmp85lykd79vfqhnsv46&st=u9rezdmt&dl=1",
+    26: "https://www.dropbox.com/scl/fi/xarlkrh77jfyku8dp5o55/026-Yo-celebrar.mp3?rlkey=249crxsfha2qi8lkv5d5ptxss&st=68lq33qz&dl=1",
+    27: "https://www.dropbox.com/scl/fi/46wfwcfx1qbe9cx5wi0rj/027-Tuya-es-la-gloria.mp3?rlkey=gfr9ez0a5croeew2l9p117ryb&st=2m7oxqih&dl=1",
+    28: "https://www.dropbox.com/scl/fi/b05518j9boh9xe2obs45h/028-Himno-al-Padre.mp3?rlkey=aevedz226w399m5s3g39p1lcn&st=snxbkxjt&dl=1",
+
+    31: "https://www.dropbox.com/scl/fi/1r891d5bo5u4gg79tczpk/031-La-creaci-n.mp3?rlkey=svsy7o3q7hfmtk64tc7xi6do0&st=wwi9n425&dl=1",
+    32: "https://www.dropbox.com/scl/fi/ch9ycwl6oko97ylix0utc/032-Cu-n-grande-es-l.mp3?rlkey=ozokadgrs8s5jwpin7z15tu9w&st=ii6tojjl&dl=1",
+    33: "https://www.dropbox.com/scl/fi/3da3vxo7akvudqrmgbk6t/033-Oh-criaturas-del-Se-or.mp3?rlkey=9ewk96e9l5fupel8qeixkf1k3&st=lj2hl83k&dl=1",
+    34: "https://www.dropbox.com/scl/fi/cud1h43jsnl9g320ki36y/034-Creo-en-t-Se-or.mp3?rlkey=wutsv3y4un6tnjuaau84jhnzu&st=d7kv8azg&dl=1",
+    35: "https://www.dropbox.com/scl/fi/zgkrre276p7bz3x6h9scc/035-El-firmamento-de-esplendor.mp3?rlkey=q01vv95waxqx3f2gk3fguv3uj&st=b1fs0gto&dl=1",
+    36: "https://www.dropbox.com/scl/fi/5qasis5w9t4bp8tqd6z34/036-Oh-Dios-mi-soberano-Rey.mp3?rlkey=578sv0524b6ga966whixnboy2&st=iw9dhyo1&dl=1",
+    37: "https://www.dropbox.com/scl/fi/l5xbz5xg0pje272q7v9tr/037-Loor-a-ti.mp3?rlkey=zn3sy1ipjri23nnisgeyyd1d8&st=d8lfhcii&dl=1",
+    38: "https://www.dropbox.com/scl/fi/cfeiako2ykjs5plip3xnb/038-Alabemos-al-Se-or.mp3?rlkey=br7v3pe3wvkqydm6u4w0wwwux&st=ky5wkwy7&dl=1",
+    39: "https://www.dropbox.com/scl/fi/aatc5x5ddk3r7hgq2o7t9/039-Cantemos-al-Se-or.mp3?rlkey=wyzrx0xxfyme8c7lq1cfxy4os&st=r974n4g9&dl=1",
+    40: "https://www.dropbox.com/scl/fi/g8pxcej7ud4xlwd27lzuo/040-Aleluya-Aleluya.mp3?rlkey=e5bf4uuznzhwmnyt2kfzvae08&st=0r92cdzk&dl=1",
+
+    42: "https://www.dropbox.com/scl/fi/azq6umpt8ekrh2o1hfzac/042-Reina-Dios.mp3?rlkey=k6ni80w51kha80sle23iulj5j&st=ow0gytm1&dl=1",
+    43: "https://www.dropbox.com/scl/fi/o2rsbp4zw90ajt6wfn2a9/043-Nuestra-fortaleza.mp3?rlkey=f85rji79qt9inah87uk8r4bns&st=qreduaxq&dl=1",
+    44: "https://www.dropbox.com/scl/fi/qknq2ou9fl7n0p7lu9n4o/044-Se-or-Jehov-omnipotente-Dios.mp3?rlkey=0681a2ww0i19kz4y0mq1334tk&st=ka8x7392&dl=1",
+    45: "https://www.dropbox.com/scl/fi/u87gnpv82m3d3ekml8e0k/045-Castillo-fuerte.mp3?rlkey=24xn8dbqrhisns0dsz9rqya7s&st=rssvd3xe&dl=1",
+    46: "https://www.dropbox.com/scl/fi/4ksso2ou7z2x1hfm933mx/046-Canten-a-Dios.mp3?rlkey=gxnopckn5qbcd0bt5xl6psa6p&st=qowgs276&dl=1",
+    47: "https://www.dropbox.com/scl/fi/77nr38bonjzj8dzqf50jm/047-Grandes-y-maravillosas-son.mp3?rlkey=4ywsj2rwpclnelrnhqy78o0zo&st=4h5a57d6&dl=1",
+
+    49: "https://www.dropbox.com/scl/fi/2q6k4fmgdxe9kuavls8w2/049-Oh-que-tuviera-lenguas-mil.mp3?rlkey=erzlldgigaq0bf8grlj0jpxrs&st=lran67gc&dl=1",
+    50: "https://www.dropbox.com/scl/fi/0evroi2os21dvs10uhr6h/050-Te-damos-gracias-Se-or.mp3?rlkey=m0vuwifnapfk4rnksy4yffjw6&st=6qkqmwnq&dl=1",
+    51: "https://www.dropbox.com/scl/fi/qhig8j8o8exnw8tcndbw2/051-Nuestra-esperanza-y-protecci-n.mp3?rlkey=9hj2idzup4ue9864qed0dvqdm&st=nukpqiio&dl=1",
+    52: "https://www.dropbox.com/scl/fi/xpmisvyos9f333tu6ax5d/052-Jehov-es-mi-luz-y-salvaci-n.mp3?rlkey=jxqhbv3an3frxbpt7y9biqlwj&st=0owot75w&dl=1",
+    53: "https://www.dropbox.com/scl/fi/ivhi6iryq158mgktksch0/053-Jehov-est-en-medio-de-t.mp3?rlkey=hvn2t0ocrus0ahx1ioyv3qf1k&st=vq5bymok&dl=1",
+    54: "https://www.dropbox.com/scl/fi/iole984l9dfdakymfy1d1/054-Poderoso-es-l.mp3?rlkey=rcp4lekf8zvayi6pwt5qi79om&st=87g49jed&dl=1",
+    55: "https://www.dropbox.com/scl/fi/mfy2k1uwvp4062j92wld5/055-Te-alabr-n-oh-Jehov.mp3?rlkey=fhp0m4bn4wrx1glfh67tvdk9o&st=z962olz4&dl=1",
+    56: "https://www.dropbox.com/scl/fi/tt1rfzkv2pg4dd8era6wh/056-El-que-habita-al-abrigo-de-Dios.mp3?rlkey=fafxquctgq6b6ufl8yzypa0n6&st=4jpbsrd4&dl=1",
+
+    58: "https://www.dropbox.com/scl/fi/6bplvhnjizac3wca6e0vt/058-Cantad-alabad.mp3?rlkey=48a8m82f47otwjold1j7ae8v6&st=ezlzi15t&dl=1",
+    59: "https://www.dropbox.com/scl/fi/vqyjzooxfn3ujsw9zj3u3/059-Grande-es-tu-fidelidad.mp3?rlkey=wtssiis2lv7lx2o3qnwx04f48&st=pe190qli&dl=1",
+    60: "https://www.dropbox.com/scl/fi/5etsr60g7wix5licw3c8x/060-Nuestro-Dios-y-Padre-eterno.mp3?rlkey=boezowcjlgei4gn2qa3h4xvhp&st=p447rhwk&dl=1",
+    61: "https://www.dropbox.com/scl/fi/ukaqkkpkzbcbmmeswnovw/061-El-Se-or-es-mi-pastor.mp3?rlkey=sn8drgmrg398xyptyy374nt4m&st=8lot1dyh&dl=1",
+    62: "linkhttps://www.dropbox.com/scl/fi/kxxw0nbq0gp7bj224f8oh/062-Eres-mi-protector.mp3?rlkey=h1x7dvzila80w5i41gvwyqoex&st=qktk4pjv&dl=1",
+    63: "https://www.dropbox.com/scl/fi/ca9p35ga5bn3meqi9ze81/063-Oh-amor-de-Dios.mp3?rlkey=ukispumu7k3yqbok3l0yu77q7&st=jubd4zos&dl=1",
+
+    65: "https://www.dropbox.com/scl/fi/75lh97ss3olk1udzlff01/065-Qu-maravilla-es.mp3?rlkey=lfaub15lu3648gwlp945dwj69&st=sg570o8a&dl=1",
+
+    67: "https://www.dropbox.com/scl/fi/45ceedu8fmpxucbpdlsca/067-Padre-Eterno.mp3?rlkey=k0275dyba3cnyf3nlojoiao3r&st=039yang1&dl=1",
+    68: "https://www.dropbox.com/scl/fi/0ics2upx50tp01uwv72hn/068-A-nuestro-Padre-Dios.mp3?rlkey=wmgrgnrsxm6lofzugi0kh608x&st=fu6yftfw&dl=1",
+    69: "https://www.dropbox.com/scl/fi/84lzvk5lbcsr0381950rw/069-De-boca-y-coraz-n.mp3?rlkey=u8t6xl1stc7nkju8g3yoh1hke&st=yqf3wjyf&dl=1",
+
+    71: "https://www.dropbox.com/scl/fi/azocro5qxrju6c5zcsjf7/071-Padre-te-adoro.mp3?rlkey=xztrmt141ykpkzfzwqo0xta0y&st=uhbqeqf3&dl=1",
+    72: "https://www.dropbox.com/scl/fi/pkhnez30lw6c8s1molxyc/072-Oh-Padre-eterno-Dios.mp3?rlkey=5rvhur193rcrhobt2592zew98&st=d311vs5p&dl=1",
+    73: "https://www.dropbox.com/scl/fi/2qftp8azn8iivrjzzn176/073-Te-loamos-oh-Dios.mp3?rlkey=2wfq23gev0ouxg3e1nz700tje&st=nu3uzf8y&dl=1",
+
+    75: "https://www.dropbox.com/scl/fi/irm1ti44fpkrcp4tcv94d/075-Cantad-al-Se-or.mp3?rlkey=10zmpf4iwi9md9x251yn09qrw&st=tlleorcx&dl=1",
+    76: "https://www.dropbox.com/scl/fi/2ba5436zjpmvb2xj64vjy/076-Santo-Santo.mp3?rlkey=kauz1prhhoott5mhluoj9qnym&st=faeyzvub&dl=1",
+
+    78: "https://www.dropbox.com/scl/fi/1vit3cmjpn5ujq9dbqjd8/078-Glorria-a-tu-nombre-por-doquier.mp3?rlkey=4sg99c04z1nyde5vb0o077u8w&st=u2kg3ght&dl=1",
+    79: "https://www.dropbox.com/scl/fi/qodt41tcas83hwp15x6up/079-Eterno-Padre-celestial.mp3?rlkey=ic8xl6pvb13m2d2og85hvu29n&st=ied9jzyk&dl=1",
+    80: "https://www.dropbox.com/scl/fi/vufe3jet1m5yrrq64wre4/080-Adoradle.mp3?rlkey=7jda866gyfm8p0v4qprphoxzr&st=9rpxesyr&dl=1",
+    81: "https://www.dropbox.com/scl/fi/6wy40cmryibuumgrhx5kt/081-Lo-que-respira.mp3?rlkey=fe9dg9hr64nb14q4r5dua3itx&st=3x2i0ryt&dl=1",
+
+    83: "https://www.dropbox.com/scl/fi/kqqfyfkhtezjq52vnmedp/083-A-Dios-cantad.mp3?rlkey=wpzs0mkjurvaz6jh4k7u0eh4u&st=qchkxueu&dl=1",
+    84: "https://www.dropbox.com/scl/fi/9uiskwas4gf4a7fagwymv/084-entrar-por-sus-puertas.mp3?rlkey=ce0ctm9tz88au5a43zvhxczje&st=zz4blui0&dl=1",
+    85: "https://www.dropbox.com/scl/fi/c3abehuiw8ilq09fh8iog/085-Dios-est-aqu.mp3?rlkey=dacepqn4woplxxne4qbqc2n2e&st=hxqd3ejv&dl=1",
+    86: "https://www.dropbox.com/scl/fi/rb1h2jxylpbzwuyxcpf6y/086-Yo-te-exalto.mp3?rlkey=50uy9salue9wt6d8mun19phsz&st=lfe0vkdp&dl=1",
+
+    88: "https://www.dropbox.com/scl/fi/ih6w1ndcpygneqbjggjgo/088-venid-nuestras-voces-unamos.mp3?rlkey=54p5epa0ut1vikunm26072ux8&st=hc89nkqj&dl=1",
+    89: "https://www.dropbox.com/scl/fi/3mfcl49nkzo2rqxpmolci/089-Vine-a-alabar-a-Dios.mp3?rlkey=ykpfmaokppnnxfkhe2vnz55h2&st=4sovuqbv&dl=1",
+    90: "https://www.dropbox.com/scl/fi/mcrhdvageu5g40a2ej05r/090-Te-exaltar-mi-Dios-mi-Rey.mp3?rlkey=idj70d9bmtuyz0rzjipka7nfh&st=c8lweox5&dl=1",
+    91: "https://www.dropbox.com/scl/fi/jmasfvs69g2wt6803seu0/091-Se-or-qui-n-entrar-..mp3?rlkey=swae31bfpi0mwulce0k93um89&st=ytq4tqgt&dl=1",
+    92: "https://www.dropbox.com/scl/fi/41rfvly0brm50sdyahvs8/092-El-cielo-canta-alegr-a.mp3?rlkey=ys2xfi60g1aeffkyqoi0a06q3&st=unc3b4ou&dl=1",
+    93: "https://www.dropbox.com/scl/fi/iw9jc3aqlxh0ks6zkflcy/093-Aleluya.mp3?rlkey=vvxy2xga5g773bp39ltp9jp5n&st=tqq8hm1v&dl=1",
+    94: "https://www.dropbox.com/scl/fi/7rd0a54ey6q2mfe0k0r6x/094-Por-la-ma-ana.mp3?rlkey=br73d5rzfmnurf8h6bcg0u1bp&st=txzwb1xr&dl=1",
+    95: "https://www.dropbox.com/scl/fi/9zym7fkhzsuu9rubp0bna/095-Ante-su-presencia.mp3?rlkey=v8irnjyawhwt0ywr5hst71tj5&st=81x6v7db&dl=1",
+    96: "https://www.dropbox.com/scl/fi/cq1iy4e8q55t84ehf7cfr/096-Las-primicias-del-d-a.mp3?rlkey=ez7ldtuk763f8i916ruvcr7e5&st=9h9zck53&dl=1",
+
+    98: "https://www.dropbox.com/scl/fi/a4ns1709i5jgthsg8sgkt/098-Te-amo-Rey.mp3?rlkey=gb8la2czb575ww5w9g4mprt8g&st=fipjfm8c&dl=1",
+    99: "https://www.dropbox.com/scl/fi/7s51gy39ln4xur40l4fo9/099-Quiero-alabarte.mp3?rlkey=ig8x5t1d11k4hui5l8bilotky&st=gdvibhkm&dl=1",
+    100: "https://www.dropbox.com/scl/fi/msa21gpfc3ykq6lxob3ma/100-En-mi-vida-gloria-te-doy.mp3?rlkey=qythbiklq16gd97hhasd4hyeh&st=ewaqi72b&dl=1",
+    101: "https://www.dropbox.com/scl/fi/b13kmb0cfxic5q01jr3qp/101-Bendice-alma-m-a.mp3?rlkey=7fvtqpi97nvlbnbbnn850ihxv&st=71k9j6z8&dl=1",
+    102: "https://www.dropbox.com/scl/fi/hd6khu9kxhurxfg9u52na/102-Canta-Canta-alma-m-a.mp3?rlkey=yqdoccuvsk4mkq4cvdplwwvfg&st=oc5y6g93&dl=1",
+
+    104: "https://www.dropbox.com/scl/fi/9qfyww135vafy2z0td58j/104-Nunca-Dios-m-o.mp3?rlkey=e2v0cnrg1o69t8gyttoa2hf3f&st=jyukkwtg&dl=1",
+    105: "https://www.dropbox.com/scl/fi/ih0fmkafhb2kodjp04tl0/105-Alabad-al-Rey-del-cielo.mp3?rlkey=degydo3uhyligywx28zbohf27&st=okxqjcxr&dl=1",
+    106: "https://www.dropbox.com/scl/fi/rxri1gptho4pxec5oun65/106-Rey-de-Reyes.mp3?rlkey=74fcqicem6b1s9umbd8srsfww&st=zjyo68vz&dl=1",
+    107: "https://www.dropbox.com/scl/fi/ov8nwaau9inw4ypo184yy/107-Al-Rey-adorad.mp3?rlkey=29wzh72cubk12ztnh6d52lqba&st=ldxtk10g&dl=1",
+    108: "https://www.dropbox.com/scl/fi/qq2yqdr8cxj5hc91rz1vv/108-Jubilosos-te-adoramos.mp3?rlkey=hwf3siwc3updvvu0d8qx9ifuj&st=gnmo1npj&dl=1",
+
+    110: "https://www.dropbox.com/scl/fi/b0hrpqfi9weszqns4sm5t/110-y-t-Bel-n.mp3?rlkey=vczlfu2o1d4we9dwiebcykypc&st=nbmqxwts&dl=1",
+    111: "https://www.dropbox.com/scl/fi/4nnzdrzgx6kad0w5ovitc/111-Oh-ven-bendito-Emanuel.mp3?rlkey=y8d9ou3yh1kq7ur44j17awglu&st=nk74ag9u&dl=1",
+    112: "https://www.dropbox.com/scl/fi/ly87tqrqaa6znpz5b2qpp/112-Emanuel.mp3?rlkey=c0wwrmvl6hzgjwqneaxfsd5ks&st=q6o8vuti&dl=1",
+    113: "https://www.dropbox.com/scl/fi/ilnp2hldazvejijvtcnjq/113-Despunta-el-alba.mp3?rlkey=rwp4dbhtzgzed87rz3umanhuj&st=j6rzppz9&dl=1",
+    114: "https://www.dropbox.com/scl/fi/29ii7brb4oa2yne4vfnwe/114-Suenen-dulces-himnos.mp3?rlkey=dwclvr1aaim3d5orvcyka8aij&st=2wvvgk8z&dl=1",
+    115: "https://www.dropbox.com/scl/fi/hdus6fmj53ntw01x8b2g8/115-venid-pastores.mp3?rlkey=yqph338l6n6srisbfuh2nl7ea&st=t42gx9jx&dl=1",
+    116: "https://www.dropbox.com/scl/fi/cgb7muw1i5ixoh25pq4i4/116-Oh-Pueblecito-de-Bel-n.mp3?rlkey=7kf90rhjsl79xct59jyt4btab&st=3u9nlznq&dl=1",
+    117: "https://www.dropbox.com/scl/fi/tohqq16j27zw7e6fwgy9i/117-Porque-un-ni-o.mp3?rlkey=fjpbe0lq56dslkjvhg42xgav0&st=k30rbsk8&dl=1",
+    118: "https://www.dropbox.com/scl/fi/ndi5y9i8oek86nnlj1vg7/118-Al-mundo-Paz.mp3?rlkey=eaa264p7gqhtqco6mi5wuw9dd&st=m4ls2s2i&dl=1",
+    119: "https://www.dropbox.com/scl/fi/8w49gg6egju3a3uto2zru/119-Gloria-a-Dios-en-las-alturas.mp3?rlkey=aqqewf4mtizsifom0r3equ2wo&st=1o9f0wea&dl=1",
+    120: "https://www.dropbox.com/scl/fi/ihsejr8woe4d5e8bv0jns/120-Oh-sant-simo-felic-simo.mp3?rlkey=v47dd1dgjn0gvzu2g6h3yq4qp&st=kpb6qpdw&dl=1",
+    121: "https://www.dropbox.com/scl/fi/3y5gdevyvyz3cbguf3qhp/121-Venid-pastorcillos.mp3?rlkey=sl02mdng2vn1qfrpxenjj313r&st=92ahlruu&dl=1",
+    122: "https://www.dropbox.com/scl/fi/xy2o7qfzps3ljg4l8n7tb/122-Angeles-alzad-el-canto.mp3?rlkey=qjb5ejlp6o2g0sybe5fuyqn4n&st=xedf4rz5&dl=1",
+    123: "https://www.dropbox.com/scl/fi/g4cjr5sowayqwgvuiktqc/123-Ved-al-ni-ito.mp3?rlkey=ayoa50ipo458oa5if7d4he0wj&st=vzirdyt8&dl=1",
+    124: "https://www.dropbox.com/scl/fi/fg8edqwhw5wtg8riax5g8/124-Al-r-stico-pesebre.mp3?rlkey=3500gfw8621ddkk8h1ahhxw35&st=gatg6agg&dl=1",
+    125: "https://www.dropbox.com/scl/fi/3dimfft25dzvupog0dyz5/125-Cristianos-hoy-cantad-a-Dios.mp3?rlkey=0wa9jco0guy21r4bqj2iwle1q&st=jk8gqzee&dl=1",
+    126: "https://www.dropbox.com/scl/fi/7tvsbzsrnp2ao55wyfyqg/126-O-d-un-son-en-alta-esfera.mp3?rlkey=72km54srt3x6flazu8ud30jx2&st=cb0ihl2b&dl=1",
+    127: "https://www.dropbox.com/scl/fi/2n3yiuksixkf88338tedt/127-En-la-coche-los-pastores.mp3?rlkey=p2n67lxk0qbrai98wi00pq88o&st=e6s8kwfg&dl=1",
+    128: "https://www.dropbox.com/scl/fi/4ycho0s9uumj84ktt5qj6/128-Jes-s-es-el-mes-as.mp3?rlkey=9u4txnl5ec3z014j34jazu9if&st=2k1ij8qd&dl=1",
+    129: "https://www.dropbox.com/scl/fi/drbbiffs9cxzjewjdmlre/129-Alla-en-el-pesebre.mp3?rlkey=5boa2fdlqq33f4hbzh2tpwd1g&st=bdgmsu45&dl=1",
+    130: "https://www.dropbox.com/scl/fi/ctuferm2ulpwh5a88f3qn/130-Angeles-cantando-estan.mp3?rlkey=gdpo4sbsjlgooqla1zzjmvf2y&st=imr6xqnc&dl=1",
+    131: "https://www.dropbox.com/scl/fi/1bxn0676rxxb2jpxl5j4d/131-Santa-la-noche.mp3?rlkey=lmkmh2s6h2s70fgifn4xx6gc9&st=ezhc5z8r&dl=1",
+    132: "https://www.dropbox.com/scl/fi/8xa8cobvpjpxp5f2x67e4/132-Oh-ni-os-venid.mp3?rlkey=93wy5v76et44bt9y4utx5ym5w&st=elbvgzha&dl=1",
+    133: "https://www.dropbox.com/scl/fi/l9j5bnyr2q6d5xqw1hqq2/133-Noche-de-paz.mp3?rlkey=f6pg1ky83fduivvld97e00tfd&st=vanp5w7h&dl=1",
+    134: "https://www.dropbox.com/scl/fi/3mlm40zddinllyivc5tx9/134-Navidad-Latina.mp3?rlkey=aelkqlocamxm9yfautq91yt7g&st=qd1gg9w7&dl=1",
+    135: "https://www.dropbox.com/scl/fi/3bfzu6qsxmvqiwran1k7l/135-En-Bel-n-naci-Jesus.mp3?rlkey=r20n3gumqy9zqk318rfngpdmh&st=1zyd1wgw&dl=1",
+    136: "https://www.dropbox.com/scl/fi/idaw3pzf8b91p8wpdpx2a/136-Hoy-es-navidad.mp3?rlkey=xe4f0zf851sepu5ussvptz4z0&st=4cm4bzr9&dl=1",
+    137: "https://www.dropbox.com/scl/fi/3z3nvcykal0p8zsxvstvr/137-De-tierra-lejana-venimos.mp3?rlkey=dcuf3krvicnlz9w3lhpwhttxp&st=k3l5ijxb&dl=1",
+    138: "https://www.dropbox.com/scl/fi/vzgcqnhixzr27scyjg7io/138-Tras-hermoso-lucero.mp3?rlkey=t3nixxf65a3ahnbckyivv9ee3&st=phsepmxo&dl=1",
+    139: "https://www.dropbox.com/scl/fi/clgqcaacja91irv2fmkh8/139-Tu-dejaste-tu-trono.mp3?rlkey=eq1h7ebc139gy1q65fiioezda&st=jkl1sgjj&dl=1",
+    140: "https://www.dropbox.com/scl/fi/ej7rxol8lkvjqgzpjrluj/140-Venid-fieles-todos.mp3?rlkey=bgc3yhx0rzfa8qyyed3k28zd0&st=0ksfmugi&dl=1",
+
+    142: "https://www.dropbox.com/scl/fi/untnphb69ex5edz61d2z6/142-Maravilloso-es.mp3?rlkey=rksslrh7krw6rm7r5l282mwqp&st=56wjhp15&dl=1",
+    143: "https://www.dropbox.com/scl/fi/k2xrf8599u6o8v6kims0l/143-Jes-s-el-buen-Pastor.mp3?rlkey=574rtnb6yjtanl3iiht4knvb4&st=kflr08mi&dl=1",
+    144: "https://www.dropbox.com/scl/fi/y2rixfko2d8o0lrbcg4gg/144-Cordero-de-gloria.mp3?rlkey=4sszem2giyib7oah0vtmkrps0&st=vjioc9yp&dl=1",
+    145: "https://www.dropbox.com/scl/fi/606aq7vxx1p35ckd6soxf/145-Gloria-por-siempre.mp3?rlkey=frchbadlle1l7n1w0c3fmiu36&st=nvpy9070&dl=1",
+    146: "https://www.dropbox.com/scl/fi/lh5n9849xx2c8mm9uhul2/146-El-es-Se-or.mp3?rlkey=cslgm9jexhfrejvilvw9dqxoc&st=gc6pj7p5&dl=1",
+    147: "https://www.dropbox.com/scl/fi/f588ua31cug7t3v51r5a3/147-Gloria-a-tu-nombre.mp3?rlkey=kdun6kcl18tlutdy398vih2ni&st=yotn136o&dl=1",
+
+    149: "https://www.dropbox.com/scl/fi/spx7npou3hpfvju5eg2aj/149-En-el-nombre-de-Jes-s.mp3?rlkey=fdaezbyhy99kphsiro5xoj17s&st=mdmm17iu&dl=1",
+    150: "https://www.dropbox.com/scl/fi/g817ur5trcpra8rbgi3fj/150-Cristo-es-la-pe-a-de-Horeb.mp3?rlkey=03rxwp1m8yfsgak2b6hteonxv&st=btrmf68b&dl=1",
+    151: "https://www.dropbox.com/scl/fi/4evgbsej6nmldsxdpfpvv/151-Cristo-nombre-glorioso.mp3?rlkey=o37xvyetx2acdzcs673yzl7ol&st=vavycjbo&dl=1",
+    152: "https://www.dropbox.com/scl/fi/sn7y50pngiqygflvnref9/152-Jes-s-es-la-Roca.mp3?rlkey=bpxy28mlhoj6gavykrm69j0re&st=hy4xvu9r&dl=1",
+    153: "https://www.dropbox.com/scl/fi/mxixbyndbspgtu70wfgaa/153-Oh-Cristo-nuestra-Roca-aqu.mp3?rlkey=hbnbxiorbkftlwkht1ivo1aaz&st=no26n2de&dl=1",
+    154: "https://www.dropbox.com/scl/fi/e7dawl2qj6pnqfn3ild6f/154-Cristo-cual-Pastor.mp3?rlkey=2fh1bl6vhzbrswniqqzdsofm0&st=58jm730m&dl=1",
+    155: "https://www.dropbox.com/scl/fi/ifs5hp1s82mkcsrhrks5a/155-El-es-la-imagen.mp3?rlkey=4i57vr2axmyqad1wervk5cb38&st=slgpy95d&dl=1",
+    156: "https://www.dropbox.com/scl/fi/oaa8mttse41l0b40vuplb/156-Hay-un-canto-nuevo-en-mi-ser.mp3?rlkey=89ezgp5wrykwawdccfe23wj9m&st=mi4r62pg&dl=1",
+    157: "https://www.dropbox.com/scl/fi/8vgxpxzstkt149spknyto/157-Jes-s-es-la-luz-del-mundo.mp3?rlkey=og3y3lybdqdgjhqpx10vw33b2&st=m3urj9v7&dl=1",
+    158: "https://www.dropbox.com/scl/fi/y1hllhmwgnzja45894fjw/158-Yo-soy-la-luz-del-mundo.mp3?rlkey=xt9qe5zzefbdo9nbwznhcs95q&st=25409z9l&dl=1",
+    159: "https://www.dropbox.com/scl/fi/6m1pl4jha2fkjmtzq23pd/159-Fruto-del-amor-divino.mp3?rlkey=mgpsihfx6zjj2t4aa943b99bo&st=1md9uc96&dl=1",
+    160: "https://www.dropbox.com/scl/fi/r7h8kwmbuxcxc2aphx1s1/160-Grande-amor-sublime-eterno.mp3?rlkey=f55882lke7v8r9ztpok9poj2z&st=y9bpfvkr&dl=1",
+    161: "https://www.dropbox.com/scl/fi/zojwzb5uwcw2wr6z19n9z/161-cu-n-grande-amor.mp3?rlkey=xj6b6h5948c5oq2qunmhkjnuz&st=e25hs480&dl=1",
+
+    163: "https://www.dropbox.com/scl/fi/6xkr7p8ot1d1e0sfz2375/163-Yo-cantar-de-mi-jesucristo.mp3?rlkey=as57dwbtw5xbj7fa9hv1icmey&st=sngp2fnp&dl=1",
+    164: "https://www.dropbox.com/scl/fi/iz3nemhdb0gi418cuid5s/164-Oh-qu-inmenso-amor.mp3?rlkey=c3z4cq1q10h1yxtf9bvnmt3te&st=y8p6ihbh&dl=1",
+    165: "https://www.dropbox.com/scl/fi/jzhqu4x4oi5jomcua3wwj/165-Gracia-admirable.mp3?rlkey=faft53ra6l293b0rep5pqkuvo&st=76br1vsq&dl=1",
+    166: "https://www.dropbox.com/scl/fi/r59hjindyp7ynihk5zslu/166-Maravilloso-es-el-gran-amor.mp3?rlkey=j34fr289gyi3fb11s9qk98b6v&st=jeyshlaj&dl=1",
+    167: "https://www.dropbox.com/scl/fi/667tsm75zk399tfxefyrx/167-En-tu-presencia.mp3?rlkey=ebcjt1uc1ythjywlgxgdfy50x&st=ase17oao&dl=1",
+    168: "https://www.dropbox.com/scl/fi/6w2curc2arjzuumpfbd1o/168-De-su-trono-a-un-pesebre.mp3?rlkey=1f1owe893z6vzqyarakqg531e&st=s2mnv4si&dl=1",
+    169: "https://www.dropbox.com/scl/fi/9q89snl1pi9ck391xqmbq/169-Demos-gracias-al-Se-or.mp3?rlkey=ly5ppbx7zbb8epi49smnptjzc&st=nxzs7m7e&dl=1",
+    170: "https://www.dropbox.com/scl/fi/hf7l1a2fx3kc1bhgzl590/170-Yo-quisiera-hablarte.mp3?rlkey=7kqi1935td512k9h62h3uva4f&st=41tbxj2i&dl=1",
+    171: "https://www.dropbox.com/scl/fi/s9lxu992ssofninqhu8aj/171-con-que-pagaremos.mp3?rlkey=nveecx18nrs78hlz71k4qkwer&st=t5dtfkqp&dl=1",
+    172: "https://www.dropbox.com/scl/fi/x85r6xzd1x81zfrvendsw/172-Gracias-dad-a-Jesucristo.mp3?rlkey=z32cmvbc8695lhjnhrkp6z7x8&st=0f6iy5pu&dl=1",
+    173: "https://www.dropbox.com/scl/fi/k7oc6ur45ol0y3x7q7lbw/173-Dime-la-historia-de-Cristo.mp3?rlkey=6jzapehnjuwu9fxhggli4s89j&st=uyfbt300&dl=1",
+    174: "https://www.dropbox.com/scl/fi/huop1pbe5g0sdfsz3wza7/174-Que-bella-historia.mp3?rlkey=st8pg80iuors2eccfldzac15y&st=7ee0yrps&dl=1",
+    175: "https://www.dropbox.com/scl/fi/bppmz10y19vp9gj0umqew/175-Oh-profundo-inmeso-amor.mp3?rlkey=7aqj3kc4u00qkvgeij09jnp2z&st=jvrzrt59&dl=1",
+    176: "https://www.dropbox.com/scl/fi/nowlkqsrnytgp80ut4oy4/176-Vida-Abundante.mp3?rlkey=e0q7s2o784dbruo7fgfq0hapb&st=p2krbrao&dl=1",
+    177: "https://www.dropbox.com/scl/fi/7dwz0cc3111wu4jzwzdcz/177-Es-Jes-s-Que-bella-historia.mp3?rlkey=8xgkv8iyi4c9lzttgmkky3eqv&st=z9ljxqi0&dl=1",
+    178: "https://www.dropbox.com/scl/fi/f1l6yrr7ia8sz4hlvbtwj/178-Sea-la-Paz.mp3?rlkey=9aadptvucl48hobwlpnb8afmf&st=9jm577vv&dl=1",
+    179: "https://www.dropbox.com/scl/fi/vo5kc974umuoti4a8acbu/179-A-la-casa-de-Jairo.mp3?rlkey=wnq7ffc38yzs6ue0lrz2zabnq&st=m3wvj8bj&dl=1",
+    180: "https://www.dropbox.com/scl/fi/znbkzidzj48lxcx53m7rv/180-La-mujer-samaritana.mp3?rlkey=0kbvnko50w3jeb9pjadzf6zp8&st=jvw176mh&dl=1",
+    181: "https://www.dropbox.com/scl/fi/qpksin0p3kq0djgsqlwpo/181-El-ciego-Bartimeo.mp3?rlkey=2ijklzg9hwh9vivow4ae6rgzg&st=svfq2v08&dl=1",
+
+    183: "https://www.dropbox.com/scl/fi/as8zbt1omaei4kh12z6xf/183-Tierra-de-la-Palestina.mp3?rlkey=j9i1axrgcfphr20r62ustog1p&st=bf906ici&dl=1",
+    184: "https://www.dropbox.com/scl/fi/0plwwo5qey4s78ei8bsfi/184-Las-Palmas.mp3?rlkey=7ywjsograyid46ae1r8bkeqm6&st=ucojhrx5&dl=1",
+    185: "https://www.dropbox.com/scl/fi/1yx3uivb0kw5m07acgqyc/185-En-el-nombre-de-Dios.mp3?rlkey=c8valuvdtegxxswdcj29g94rg&st=534rok5p&dl=1",
+    186: "https://www.dropbox.com/scl/fi/5movd1s80uoe5ojeyc1v7/186-Hosanna.mp3?rlkey=r055a4bwz4c58t0x7h835z650&st=7wk6us5q&dl=1",
+    187: "https://www.dropbox.com/scl/fi/23gqq76pyeg34ejpbyqq4/187-Cabalga-Majestuoso.mp3?rlkey=zfaquwbit8l4qtb0ezeni47eh&st=zbzf1odu&dl=1",
+
+    189: "https://www.dropbox.com/scl/fi/9mzodizoj0im28r1fj7p2/189-Hosanna-en-el-cielo.mp3?rlkey=rtqp43au9isu1xzq2j61rtmxp&st=19un7cyd&dl=1",
+    190: "https://www.dropbox.com/scl/fi/9ap23c8gpjydbeypqo2wg/190-Jerusal-n-la-hermosa.mp3?rlkey=sfwtxkqqnc4vhq1ueb78nkjip&st=wstvwiz0&dl=1",
+    191: "https://www.dropbox.com/scl/fi/l8gpvzvk15q05m7ndjhwd/191-Que-quiero-mi-Jes-s.mp3?rlkey=vywrkphk7wtz43vahdz9g537m&st=lcazkt03&dl=1",
+    192: "https://www.dropbox.com/scl/fi/8q1a2fzpt06y0ou8m2o9z/192-Cristo-nuestra-ofrenda-es.mp3?rlkey=xxryvez9y5qsk7bde1cgz088u&st=z6d0k6yj&dl=1",
+    193: "https://www.dropbox.com/scl/fi/2sbyindkneboo0t13chu0/193-Fue-de-Dios-la-santa-voluntad.mp3?rlkey=l8qzre8gl5z0z4esnr8f7w2e0&st=wgry8563&dl=1",
+
+    195: "https://www.dropbox.com/scl/fi/gppvzveetxmquus3f7tr7/195-Rasg-se-el-velo.mp3?rlkey=5bi1zngtm61kg7ytd8pg5qv0t&st=jjhy2g2b&dl=1",
+    196: "https://www.dropbox.com/scl/fi/dnktwqqengce09cqlccyf/196-El-varon-de-gran-dolor.mp3?rlkey=thdjuigpn15gy92mwndmvt97q&st=y12mef4g&dl=1",
+    197: "https://www.dropbox.com/scl/fi/nauagk9i2s33gbnflq5fc/197-Mirad-al-Salvador-Jes-s.mp3?rlkey=rbe001iunf57co45b4nll0v0u&st=kqwlxt5h&dl=1",
+    198: "https://www.dropbox.com/scl/fi/kuy40abdckgzwyalmkw4b/198-Mi-vida-di-por-ti.mp3?rlkey=n70hwvftte88a1peoow9sg3pd&st=qegfdhoo&dl=1",
+    199: "https://www.dropbox.com/scl/fi/60sfc1mcb5mu6ydhqizqo/199-En-la-vergonzosa-cruz.mp3?rlkey=rlu9wgs0hcfoib2ac1wh4sq8g&st=nv0ikfkz&dl=1",
+
+    201: "https://www.dropbox.com/scl/fi/hhq6gz004k3409p9c1gry/201-Pies-divinos.mp3?rlkey=eqja7pgfzbn4j05f75prrgpfj&st=15nlgi8s&dl=1",
+    202: "https://www.dropbox.com/scl/fi/m0lxj216aq19fwzw8ot14/202-Cristo-Padeci.mp3?rlkey=q5zawlchx8um2zbk4ue6u1wgt&st=gktinkvd&dl=1",
+    203: "https://www.dropbox.com/scl/fi/dtf76at74d1iu7s3u8mfv/203-Cabeza-Ensangretado.mp3?rlkey=efcy7hl852w8085ymmnxnaq2t&st=qbap2q93&dl=1",
+    204: "https://www.dropbox.com/scl/fi/svzgvon6o00q4ohz9c5kv/204-Alzad-la-cruz.mp3?rlkey=ur5mtzg1uh8vn6mi9zc477z22&st=t75v7cpa&dl=1",
+
+    206: "https://www.dropbox.com/scl/fi/r7vqruxxe349e52zzpwrq/206-La-vision-de-la-cruz.mp3?rlkey=xatkziu32zjrwkkpnrtzxb7gu&st=ww03xlo3&dl=1",
+    207: "https://www.dropbox.com/scl/fi/w313hp78t5hilrwg6vre3/207-Junto-a-la-cruz-de-Cristo.mp3?rlkey=h9xqwl7ivytnbs3i593j7atdc&st=p7efvza3&dl=1",
+    208: "https://www.dropbox.com/scl/fi/30ix1mo7emzbzqxd26cae/208-Un-d-a.mp3?rlkey=zr66o0w1mffv7874kqfwwblhn&st=ivzbrej9&dl=1",
+    209: "https://www.dropbox.com/scl/fi/1wvlwre3etr47we8v4jsb/209-Manos-Cari-osas.mp3?rlkey=xre8w34x1b0md1nist3h9s35j&st=m00y58oh&dl=1",
+    210: "https://www.dropbox.com/scl/fi/zw6pjs5qj4xldwvu6g7yb/210-En-la-cruz.mp3?rlkey=psp5nzlwxbc3gp0fk7mi786r9&st=zml61ae3&dl=1",
+
+    212: "https://www.dropbox.com/scl/fi/6i7mf0fiwgm431xev6c6o/212-La-tumba-le-encerr.mp3?rlkey=eeme6qbtx8c6o5867ey2sd282&st=ukm3kslp&dl=1",
+    213: "https://www.dropbox.com/scl/fi/i31ep74013oot4axkuj43/213-Rusucit-Jes-s.mp3?rlkey=1zdh2sftexgh5etav8sjni75h&st=1jbmwiw7&dl=1",
+
+    215: "https://www.dropbox.com/scl/fi/vz2zyl9p0lpzsfmonork9/215-El-Se-or-resucit.mp3?rlkey=2u353mmop6gffk5qfdjwdah6u&st=m1odrv8z&dl=1",
+    216: "https://www.dropbox.com/scl/fi/droo7pvqq0d55vkuzxg59/216-Aleluya-gloria-a-Cristo.mp3?rlkey=k92y1iexapgwhnydo3tbnxt7i&st=nihumhsp&dl=1",
+    217: "https://www.dropbox.com/scl/fi/6kpysou3saxh5vh4lyk4r/217-Gloria-gloria-al-Vencedor.mp3?rlkey=9ug4iseylo62zqgtrmuzjr6za&st=v68k2evd&dl=1",
+
+    219: "https://www.dropbox.com/scl/fi/b6bcm7nl95hws6zc5hjk6/219-Resucit-Jes-s-el-Se-or.mp3?rlkey=n405i462dinz1djlxwyn528k4&st=58pvlbm0&dl=1",
+    220: "https://www.dropbox.com/scl/fi/p32iup9rgjymrrv7kqzpy/220-A-ti-la-gloria.mp3?rlkey=95woulu4unfvw0u9dnanqcych&st=c7w3kf1y&dl=1",
+    221: "https://www.dropbox.com/scl/fi/jeuo0khbtfpmt28x4ijad/221-Jes-s-Vencio-la-muerte.mp3?rlkey=lxr1evzk0mbffbphddjhqa08h&st=5f5ay682&dl=1",
+    222: "https://www.dropbox.com/scl/fi/36ae0v9si3q17ty73txlf/222-Porque-l-vive.mp3?rlkey=xfe44qp90lsyujfg2mwy17p5c&st=585c6vpq&dl=1",
+    223: "https://www.dropbox.com/scl/fi/fbw4s79sj8uq0p6i7tva4/223-Glorificaremos-al-Se-or.mp3?rlkey=5uh32rnklhonf0f31wb8zfcth&st=ld3b6h8d&dl=1",
+    224: "https://www.dropbox.com/scl/fi/23wfndcj1134mjhsqanmu/224-Al-Cristo-vivo-sirvo.mp3?rlkey=gnuzbi4y0iimwcvjve6viune7&st=fftmm2ws&dl=1",
+
+    226: "https://www.dropbox.com/scl/fi/21q413bipumbdyi4n7r1o/226-Rey-Exaltado.mp3?rlkey=khmqbi3hjnzlt6fzt82q9wjb6&st=ozmhoe8o&dl=1",
+    227: "https://www.dropbox.com/scl/fi/ca8aw3xichdhw2bnqpnka/227-Victoria-Victoria.mp3?rlkey=q0tje6z2tqoa03exc6q011993&st=xqnzmwv4&dl=1",
+    228: "https://www.dropbox.com/scl/fi/5m0qi3ekby33d4j9j5m68/228-Venid-adoremos.mp3?rlkey=ttwo7388i72wlrpt6bnefrj40&st=yexjvwgs&dl=1",
+    229: "https://www.dropbox.com/scl/fi/zuwuhktl0z6qn94y0uns5/229-Hoy-en-gloria-celestial.mp3?rlkey=5d3avuqou2owkqqc88fbaivb6&st=aeguc0of&dl=1",
+    230: "https://www.dropbox.com/scl/fi/3xfqdq7k4ggod818gz293/230-Yo-vivo-Se-or.mp3?rlkey=8w0796o3cnsa9ouzhievxockn&st=h0jsujke&dl=1",
+    231: "https://www.dropbox.com/scl/fi/okngw0yj42zn8bqlafj02/231-Alabad-a-Cristo.mp3?rlkey=e1pbzvcj9hv3hpd0oou5ziufd&st=pqe3k72i&dl=1",
+    232: "https://www.dropbox.com/scl/fi/eaznyo2jo79y16qjcx75g/232-Cordero.mp3?rlkey=jt6r9a7blsrlqj2wnqdz0dq8b&st=zh5mdr94&dl=1",
+    233: "https://www.dropbox.com/scl/fi/n0bunwa80wrvhw07gho7j/233-Digno-Eres.mp3?rlkey=ijjd8fbyz46k7dm1quckunqxe&st=eug52ksm&dl=1",
+    234: "https://www.dropbox.com/scl/fi/vwldazm7hfstifwvd6alv/234-Digno-es-el-cordero.mp3?rlkey=q6yety38w4f1n9f4cshrnlkb9&st=st1456gf&dl=1",
+    235: "https://www.dropbox.com/scl/fi/zysi82kcea890si77g04o/235-A-Cristo-coronad.mp3?rlkey=x7mjef0vo10ed8oi1qxud87pa&st=wyvlo61e&dl=1",
+    236: "https://www.dropbox.com/scl/fi/8r4o4m55babeeafzpshm7/236-Cristo-Jesucristo.mp3?rlkey=vyno43755vjdiybu2j3scgpu4&st=m3967h6f&dl=1",
+    237: "https://www.dropbox.com/scl/fi/5lvh49kpdqmi92yx5n2hy/237-Cari-oso-Salvador.mp3?rlkey=z1xamy25iy6b26acv7jqbo1pw&st=pfca6uz1&dl=1",
+    238: "https://www.dropbox.com/scl/fi/0ec5pm6pof1rtv9aqgaqr/238-Al-Se-or-Jes-s-loemos.mp3?rlkey=6avp1hpog5o762e6x9d9s3upm&st=3t9hfiim&dl=1",
+
+    240: "https://www.dropbox.com/scl/fi/gor8oaagxha4gfqot7yzl/240-Coronadle.mp3?rlkey=t3eijzzq82od1gpg5g92hfhnd&st=7jwt4qse&dl=1",
+    241: "https://www.dropbox.com/scl/fi/9lat2luxo9d2tzeliygp9/241-Loores-dad-a-Cristo-el-Rey.mp3?rlkey=0qqzpsggoj1lyhk383969hg96&st=5anny0qc&dl=1",
+    242: "https://www.dropbox.com/scl/fi/ug20dw7sfgqmp4dbp7i37/242-Gloria-a-Cristo.mp3?rlkey=iks62mokd1okmdu08ui0olhrb&st=dr048932&dl=1",
+    243: "https://www.dropbox.com/scl/fi/091z2xcj6e68lakzyilwm/243-Jes-s-es-mi-Rey-soberano.mp3?rlkey=m0953rrstgjpjl6jc4zh9syv7&st=ipwkitpz&dl=1",
+    244: "https://www.dropbox.com/scl/fi/36girjg08wma362t1wmfs/244-Glorioso-Cristo.mp3?rlkey=7e283wn5c04nksznx849zvasp&st=klmyb3he&dl=1",
+    245: "https://www.dropbox.com/scl/fi/jqft6sf3f5d9q8qa0umtz/245-Oh-cu-nto-le-amo.mp3?rlkey=g1j2sv8itthenpar6cf57cylw&st=lylyirdz&dl=1",
+    246: "https://www.dropbox.com/scl/fi/wc3prdhsgf0o4szp77y65/246-Cristo-Maravilloso-eres-t.mp3?rlkey=uzmvfhd8a7omawe18fu5turd6&st=mq1vtne5&dl=1",
+    247: "https://www.dropbox.com/scl/fi/m3uuasgkacgnz3umlo46o/247-En-momentos-as.mp3?rlkey=hjda4uk6oxdwogmqtj2pil7b5&st=9v2155nj&dl=1",
+
+    249: "https://www.dropbox.com/scl/fi/ozx78ub24zveb6uktz71g/249-Himno-al-Esp-ritu-Santo.mp3?rlkey=vvw8iv4uru7zicqprhswm79kc&st=l092nuyt&dl=1",
+
+    251: "https://www.dropbox.com/scl/fi/kcls1cgx0fgvg4mlk9ih0/251-Lluvias-de-gracia.mp3?rlkey=n65p3tqinkfyme9apnh9nlkpw&st=ro00fn05&dl=1",
+    252: "https://www.dropbox.com/scl/fi/1jgjf9hgibkrfijtdqgr0/252-Fuisteis-sellados.mp3?rlkey=sfz9kmssajrgzfqwcj48mq1st&st=1c0m980e&dl=1",
+    253: "https://www.dropbox.com/scl/fi/s0x8lkwuzhxpb3fxp2toe/253-El-fiel-consolador.mp3?rlkey=io45zkyylh2m3pad9f7mxmaoo&st=bd6s4283&dl=1",
+    254: "https://www.dropbox.com/scl/fi/n2idjnl78m9yb8qanc9fa/254-Sed-llenos-hermanos.mp3?rlkey=08btrvtjzjg6vc57gqijbyv0j&st=szoqq6bs&dl=1",
+    255: "https://www.dropbox.com/scl/fi/36ba4bb7hey0qxglaih7u/255-En-un-aposento-alto.mp3?rlkey=p4utc0uu55isvhzax284verpm&st=lu94nhtg&dl=1",
+
+    257: "https://www.dropbox.com/scl/fi/0dyquasontqn54a6fy5o6/257-Esp-ritu-de-Cristo.mp3?rlkey=828i7b7ef9rxz03u7iowx8whn&st=psh3raev&dl=1",
+    258: "https://www.dropbox.com/scl/fi/0nswarcnrffiknwnbllc9/258-Santo-Consolador.mp3?rlkey=7ktpgoqo565e2huhqehskg31y&st=1kfxlc0j&dl=1",
+    259: "https://www.dropbox.com/scl/fi/pl845wwjts32yiq5pv7vq/259-Esp-ritu-del-trino-Dios.mp3?rlkey=rjpw3nbwhwrtwuqieng23l539&st=sg7czphk&dl=1",
+    260: "https://www.dropbox.com/scl/fi/lzx4j6zimrfa73n56owzv/260-Transf-rmame-Esp-ritu.mp3?rlkey=c1vaf2q3dcgxy209kzzftviq7&st=kqrfm4qs&dl=1",
+
+    262: "https://www.dropbox.com/scl/fi/psxsr5jqrkybbvdtwr6ee/262-Divino-Esp-ritu-de-Dios.mp3?rlkey=x6prax8jis674n43bs1x3zdeq&st=gm996nwu&dl=1",
+    263: "https://www.dropbox.com/scl/fi/0mcjtzou51u7nsnmxsbs2/263-Santo-Esp-ritu-controla.mp3?rlkey=zgjyljuqrb1yv3huc6qpp3bpt&st=41nh57rz&dl=1",
+    264: "https://www.dropbox.com/scl/fi/rh3acos19hy021ud7waa8/264-Oh-divino-Esp-ritu.mp3?rlkey=88ew7ebakbz8vlmt4kjgusdos&st=s8nj5lsv&dl=1",
+    265: "https://www.dropbox.com/scl/fi/m2fg5f4ey24w1ebrhdnez/265-El-fruto-del-Esp-ritu.mp3?rlkey=91a8obhcq3t7jsqvns7t50d46&st=25if4bz2&dl=1",
+    266: "https://www.dropbox.com/scl/fi/ja0ck4g8k3kdqffk9ptv4/266-Sat-rame-Se-or.mp3?rlkey=cycpqryh4okryl9hyl0dl9n73&st=d9rick56&dl=1",
+    267: "https://www.dropbox.com/scl/fi/7wbg81pq9kb6un7wxcfla/267-Abres-mis-ojos.mp3?rlkey=ik8clq48u7ujw9szs6x2hnz76&st=c8zs3pxc&dl=1",
+    268: "https://www.dropbox.com/scl/fi/48hqj6fc4ta1kg6m5opm2/268-L-para-es-tu-Palabra.mp3?rlkey=8kufx7h2fqzggwc0p1mne6j1s&st=hbscj5ol&dl=1",
+
+    270: "https://www.dropbox.com/scl/fi/r190rfj1n280i0a9l8ce0/270-Santa-Biblia.mp3?rlkey=uvjlyoswpmj9mxi5e2gdv3slt&st=u20jtrnl&dl=1",
+    271: "https://www.dropbox.com/scl/fi/7m970ko2x34u9ve55p35y/271-Los-cielos-anuncian-tus-obras.mp3?rlkey=ms45vb6av2cuu6lbefv5vcz4a&st=q8p21iiz&dl=1",
+    272: "https://www.dropbox.com/scl/fi/3tkws551o19v9uw1eg0u5/272-Cu-n-firme-cimiento.mp3?rlkey=5jqfutqa2x6oxfm6fq44xyqa0&st=no1qiwe6&dl=1",
+    273: "https://www.dropbox.com/scl/fi/m8b70f5c1j9ir9yep91zn/273-Todas-las-promesas.mp3?rlkey=ca3z5bjtj2m6bt5mkw49ab5o4&st=sbwaci9n&dl=1",
+    274: "https://www.dropbox.com/scl/fi/nng3uyv9rs4n0mrllnlr6/274-Dame-de-vida-el-pan.mp3?rlkey=dgpjj9smgui77da4mwuxmw79k&st=lumpap7b&dl=1",
+    275: "https://www.dropbox.com/scl/fi/2avl1of2zj7c38ii8mvhr/275-Nunca-se-apartar.mp3?rlkey=77wlsylklg92v1xzwdfyktwjt&st=jqel6m1d&dl=1",
+    276: "https://www.dropbox.com/scl/fi/coi5axepyvphgnz31svre/276-Padre-tu-Palabra.mp3?rlkey=iuffbvr26mtn9dildxwnb15u2&st=8jthb5pa&dl=1",
+    277: "https://www.dropbox.com/scl/fi/fkr31ik6pb3tchyo88x87/277-Tu-Palabra-es-mi-c-ntico.mp3?rlkey=ot7x9iq47c2t9dpf6cqbhfwsr&st=fvyy8yp2&dl=1",
+
+    280: "https://www.dropbox.com/scl/fi/e6vikmb3xhbrbz07n3wta/280-Bellas-palabras-de-vida.mp3?rlkey=25psw265mzbxp5vq5iza6lwus&st=xtgrar5r&dl=1",
+    281: "https://www.dropbox.com/scl/fi/nupm1unxj82y5rg7ay61k/281-La-Palabra-del-Se-or.mp3?rlkey=7dz4utdn1e0kze7jwjhi0hv13&st=9sul68w9&dl=1",
+    282: "https://www.dropbox.com/scl/fi/2kkvrju5zk4zszh4rhfhy/282-Sembrar-la-simiente-preciosa.mp3?rlkey=xs3ny8phawuobs24sgyprjjf0&st=3c59wb0p&dl=1",
+    283: "https://www.dropbox.com/scl/fi/2b7i95kng2vt5upihj2wm/283-Esdras-prepar-su-coraz-n.mp3?rlkey=a3p3bx2jk2d02khs7bwlvqinx&st=6cos07nv&dl=1",
+    284: "https://www.dropbox.com/scl/fi/4t2qa4yr9fa667ri63rlq/284-Oh-Verbo-encarnado.mp3?rlkey=32zjw8l2yh5pogmv7brkp2e6j&st=68dtrcxf&dl=1",
+
+    286: "https://www.dropbox.com/scl/fi/w8fabfiiov26j7qucz6i5/286-Oh-Se-or-Procuro-en-vano.mp3?rlkey=eaz2p0j68d8qug2wnpygwf6b2&st=3i4cobo2&dl=1",
+    287: "https://www.dropbox.com/scl/fi/ln7mi0ep2579eyv5dkqna/287-Por-fe-en-Jes-s-el-Salvador.mp3?rlkey=xkso3qvzmyf4oh2n0vylvmxuv&st=1b8xciko&dl=1",
+    288: "https://www.dropbox.com/scl/fi/66d2k7pqe1xkcwq8yssqg/288-El-camino-romano.mp3?rlkey=tk0rhvvq91hsyjcxko3iwku01&st=27c2bou8&dl=1",
+    289: "https://www.dropbox.com/scl/fi/mqgsr5t6f2tmgpqq7jzld/289-Oh-la-sangre-de-Cristo.mp3?rlkey=zgt0r1bmb6vglbd174gcnw6uk&st=wjl0v3yv&dl=1",
+    290: "https://www.dropbox.com/scl/fi/lu32pnoyt46exusoyax4p/290-Cristo-habita-en-mi-coraz-n.mp3?rlkey=bzqbdc7cg3ew774co03loeof0&st=1e8u23ua&dl=1",
+    291: "https://www.dropbox.com/scl/fi/5vpxh2ekk0ahh3a2b3vlc/291-Dios-muestra-su-amor.mp3?rlkey=jwxv584d3eyi8al19105l2mv0&st=ddarb2uq&dl=1",
+    292: "https://www.dropbox.com/scl/fi/ovu5s1m09vlqs8k2p070a/292-Hay-un-solo-Dios.mp3?rlkey=7zebzc97ex1rrn9jf4fr7r285&st=4vosxesl&dl=1",
+    293: "https://www.dropbox.com/scl/fi/istle2u24pil84zsvybsv/293-Oh-bondad-tan-infinita.mp3?rlkey=yg4kvjfhbhr5rx2ns47xh53e2&st=ulmw47rf&dl=1",
+    294: "https://www.dropbox.com/scl/fi/ik477f8sq7oiw61mmrbr2/294-Cu-n-profundo-es-tu-amor.mp3?rlkey=2yul4clbbkjlc9a4uli1pjhzu&st=tmcdowyi&dl=1",
+    295: "https://www.dropbox.com/scl/fi/pcjyrapqr3fd2fqe45d0m/295-Dios-al-mundo-am.mp3?rlkey=1lyw3375h4fhduj7h3p8045uv&st=l2wzyixw&dl=1",
+    296: "https://www.dropbox.com/scl/fi/r9xyen36ho4y9gtbarsxs/296-Nuestro-Dios-nos-salvo.mp3?rlkey=h567laz1br5zxc9umlgndo3ao&st=mqkds23g&dl=1",
+
+    298: "https://www.dropbox.com/scl/fi/k95kbndvm46wauyov4yg7/298-Que-me-puede-dar-perdon.mp3?rlkey=ybwn2z5rwfxvdaylt07nwxgdc&st=lzn63i9v&dl=1",
+    299: "https://www.dropbox.com/scl/fi/zkpcyy0wa801k503zv3vs/299-Por-fe-contemplo-redencion.mp3?rlkey=akmdm1hraasg1udwbsowhv9eg&st=24w9k7wn&dl=1",
+    300: "https://www.dropbox.com/scl/fi/n6hk0788cckuxeox5b40q/300-Sublime-Gracia.mp3?rlkey=kpwuz3y7vmdurxbt87fjdeips&st=yrqlolot&dl=1",
+    301: "https://www.dropbox.com/scl/fi/mgbwu7ife8nj7px1plhi3/301-Sabes-donde-hay-una-fuente.mp3?rlkey=lbnryriitne6e5z0y94u2pq38&st=jxcd4km9&dl=1",
+    302: "https://www.dropbox.com/scl/fi/kbvktil0xea8l2d7xaclh/302-Sin-Cristo-yo-no-tengo-nada.mp3?rlkey=qnnznb9lagsdiszjecpq6yuod&st=qh5ibbkx&dl=1",
+    303: "https://www.dropbox.com/scl/fi/s6cc0ef6opmbv2kv0ve3k/303-Sabes-tu-de-Cristo.mp3?rlkey=885076nmkxryc3fbpfmookgw0&st=7iy1naxv&dl=1",
+    304: "https://www.dropbox.com/scl/fi/xspay3bo85pr14cx11kq1/304-Has-hallado-en-Cristo.mp3?rlkey=eime0ztaqp9wgx4oqcr8vp2gl&st=8zb9z7d0&dl=1",
+    305: "https://www.dropbox.com/scl/fi/eg3pk9mqqklkwudf4ya04/305-Ven-a-las-pies-de-Cristo.mp3?rlkey=85s39ojfedt95rn5571ge4npw&st=e0i0cd48&dl=1",
+
+    307: "https://www.dropbox.com/scl/fi/ipcnl80pch3e5v69fv763/307-Nuesta-Vida-acabar.mp3?rlkey=r27pralm1jqakms31jgw9so7h&st=tvbm26r2&dl=1",
+    308: "https://www.dropbox.com/scl/fi/q4m075kle1z8izoaqcoua/308-Tal-como-soy.mp3?rlkey=j5hy88izo0d73q5lwt99a2umj&st=fvuka2jb&dl=1",
+    309: "https://www.dropbox.com/scl/fi/60vmjssgneeoye3q02kup/309-Toma-de-la-fuente-del-agua.mp3?rlkey=t4unsgnhui0woooe4s5g5932k&st=cx4fmz0e&dl=1",
+    310: "https://www.dropbox.com/scl/fi/7t1j0eany6mepl53gf4m6/310-Pecador-ven-a-Cristo-Jes-s.mp3?rlkey=jcnedb8s6m8yrzv5f2wv8ixi3&st=vv80cjal&dl=1",
+    311: "https://www.dropbox.com/scl/fi/uka3sabemjjm01v988v3l/311-Quieres-ser-salvo.mp3?rlkey=apa8nn58e7tt6cgl4i0yq97ma&st=hir5ca3g&dl=1",
+    312: "https://www.dropbox.com/scl/fi/1wpxy1krxhcvzwsd8o6aq/312-A-Jesucristo-ven-sin-tardar.mp3?rlkey=5offblkhbgwp6pw0qrhdr0mot&st=1801r2lv&dl=1",
+    313: "https://www.dropbox.com/scl/fi/gxbs17d87ohxxvmavlya4/313-Ven-amigo-a-Jes-s.mp3?rlkey=nxrxoiyybz1xr41swciiwntyt&st=0yabfo8t&dl=1",
+    314: "https://www.dropbox.com/scl/fi/5m0ivvhfnarjecqwapqux/314-Vida-nueva-encontr.mp3?rlkey=jnxj1xbm843e3a2yjv2z69fgl&st=gupuioki&dl=1",
+    315: "https://www.dropbox.com/scl/fi/nn5161cgv7xtucl0sehf5/315-Vision-Pastoral.mp3?rlkey=42ix59nmr5ywa1u4sgbbd11kj&st=cd1gn7hp&dl=1",
+    316: "https://www.dropbox.com/scl/fi/xkyx0pm3pc4h4cdg9g04q/316-Con-voz-benigna.mp3?rlkey=9gnis3g0e7tw7hg96kfghhm37&st=hxr5vc3p&dl=1",
+    317: "https://www.dropbox.com/scl/fi/d93udvww3p2ehxm1wy0m2/317-Oh-Se-or-recibeme-cual-soy.mp3?rlkey=sya9xganrmqrn2cgzzu23j3kh&st=a0hq3ay0&dl=1",
+    318: "https://www.dropbox.com/scl/fi/1d069cvrqhfznm2kzribt/318-A-los-sedientos-venid.mp3?rlkey=5tyonxnfh7siatcms1vjfohn3&st=ubhw464r&dl=1",
+
+    320: "https://www.dropbox.com/scl/fi/ais6k7ayn5b3diu2n0l7b/320-Cual-la-mar-hermosas.mp3?rlkey=42fap6hmrcxc65jmvtdrvjcue&st=sr2qhe2g&dl=1",
+    321: "https://www.dropbox.com/scl/fi/09skv26j04t8pldw6co7p/321-Paz-con-Dios.mp3?rlkey=cou8rnvmsylr0gs1739s84i0e&st=sbjpvrru&dl=1",
+    322: "https://www.dropbox.com/scl/fi/z7akfv6kjc4yy5lmoz0wj/322-A-os-mi-alma-en-vanidad-vivio.mp3?rlkey=hq4occnflh6oorsqb9gok6ni1&st=rjqzw7bn&dl=1",
+    323: "https://www.dropbox.com/scl/fi/m9f7yb7ruyrcr89bmzhtk/323-Lejos-de-mi-padre-Dios.mp3?rlkey=ibva9flnu4t8bq31payllnd9g&st=lxo04jq5&dl=1",
+    324: "https://www.dropbox.com/scl/fi/30gc7tro42hvu5u7xd7q3/324-Jam-s-Jam-s.mp3?rlkey=3d9pixhrdjzt60r6uaaft5brz&st=fa2j4ruv&dl=1",
+    325: "https://www.dropbox.com/scl/fi/y5c89sflm3m54wo45p3pj/325-En-el-monte-Calvario.mp3?rlkey=wp8y1z0sjjmvuzd1tyqbkfvw2&st=v6txwuep&dl=1",
+    326: "https://www.dropbox.com/scl/fi/tm3bi8kkjl6icj5r5w06r/326-La-hermosa-Vision-de-la-cruz.mp3?rlkey=7wuvz5qq0ch9vbedobbin2iho&st=5nl4w7b9&dl=1",
+    327: "https://www.dropbox.com/scl/fi/z68p9ax8coikr0h7aoiy2/327-Hall-un-buen-amigo.mp3?rlkey=f4cicn1vgwwkgge917w5tjg59&st=ufiirswm&dl=1",
+    328: "https://www.dropbox.com/scl/fi/kwj0hr601yv15awmovlxu/328-Solamente-en-Cristo.mp3?rlkey=pa4ktcbqgr9fz4oh8mp4exdc4&st=76b2sado&dl=1",
+    329: "https://www.dropbox.com/scl/fi/zb5r04ftclbj5309fglan/329-Fuente-de-vida-eterna.mp3?rlkey=r8f5as5yuipvuokwldz33i80m&st=jncdzh08&dl=1",
+    330: "https://www.dropbox.com/scl/fi/nziw027tlpsczb84eoriu/330-Hay-una-senda.mp3?rlkey=rrl8vprntturxu1q8guadcp3v&st=5axdx7wi&dl=1",
+    331: "https://www.dropbox.com/scl/fi/dbywet6uuqokzlxkz1unq/331-El-encuentro-con-Jes-s.mp3?rlkey=wouu91cb8ovoa9qznzn5cll0b&st=dn5uej9r&dl=1",
+    332: "https://www.dropbox.com/scl/fi/avp1sv3pz2aprwimpvynw/332-Me-salv-me-perdon.mp3?rlkey=ytn5paw3tl812junm2ihz3we1&st=rici4tn3&dl=1",
+    333: "https://www.dropbox.com/scl/fi/ppp6oo4xf9ge3dpwulz1v/333-Hay-un-nombre-en-la-gloria.mp3?rlkey=x0m51su6c5ulp1asao5gu2afb&st=41pqj9eh&dl=1",
+    334: "https://www.dropbox.com/scl/fi/jg59bzgfl13g6fj1jo2o0/334-Cuando-bueno-es-Dios.mp3?rlkey=om2be2pmteitory2inmqhmmz1&st=ihqxi84t&dl=1",
+
+    336: "https://www.dropbox.com/scl/fi/d90o03l1uqk1ggny70088/336-Mi-cuilpa-el-llev.mp3?rlkey=fzp3eop820e27e2v8od6qms88&st=4e227l6x&dl=1",
+    337: "https://www.dropbox.com/scl/fi/nacof9odkna4qnnsre3hs/337-El-vino-a-mi-coraz-n.mp3?rlkey=pb7ph6yyi38nyf1fxhrfhbvsu&st=t6hkxz87&dl=1",
+    338: "https://www.dropbox.com/scl/fi/4bg1qhgeis85zwqec850r/338-A-su-nombre-gloria.mp3?rlkey=u40pb14231abxso1573dx5ztx&st=aw0f1g84&dl=1",
+    339: "https://www.dropbox.com/scl/fi/fykc1pjd3aiaw375qvum9/339-Comprado-con-sangre-por-Cristo.mp3?rlkey=nv4k8t4wn071es5s76tju5scl&st=3lyjw3vb&dl=1",
+    340: "https://www.dropbox.com/scl/fi/50z7tfsiv4k5jrytfcb5b/340-Escogido-fui-de-Dios.mp3?rlkey=8tjjhh5az3du1b5n4dzcgb93b&st=ff6dltiy&dl=1",
+    341: "https://www.dropbox.com/scl/fi/6s59c8c8a8oqf4x0dhrwf/341-Vida-Eterna.mp3?rlkey=5r1dkyz1dz82i70owfdkeru26&st=5ss9x4v2&dl=1",
+    342: "https://www.dropbox.com/scl/fi/3e4z7wn1p6vdjrhgij79r/342-Un-gran-Salvador-es-Jes-s.mp3?rlkey=zjhip39log70uvm4udks35ta6&st=blwlck1o&dl=1",
+    343: "https://www.dropbox.com/scl/fi/l5ag99700oxidmd4s9xuu/343-Yo-te-bendigo.mp3?rlkey=s6y0hxucojvx8v771p8mffkl2&st=wnkw7lde&dl=1",
+    344: "https://www.dropbox.com/scl/fi/l0tc83r5x09zcdqkgz3it/344-Yo-se-a-qui-n-he-cre-do.mp3?rlkey=9rcegc3fex2o2h3xq32dvk46y&st=ibd8d34r&dl=1",
+    345: "https://www.dropbox.com/scl/fi/em44te57dplmntu2uwag7/345-Mi-fe-descansa-en-Jes-s.mp3?rlkey=14wclkoyek2p7q7l2oruwmz35&st=ka59979h&dl=1",
+    346: "https://www.dropbox.com/scl/fi/6lhaqzx55h7vsmauvr6kg/346-Del-amor-divino.mp3?rlkey=tv8rzcqvm9l765q1hh4spqlul&st=rtis56uw&dl=1",
+    347: "https://www.dropbox.com/scl/fi/m4eue1x883wp9gwhwlz84/347-Bajo-sus-alas.mp3?rlkey=fh4n2l9m6s2805x8ki1tze8pw&st=slgd18t3&dl=1",
+    348: "https://www.dropbox.com/scl/fi/m2rvc0scnfi98wa8tau83/348-Pues-si-vivimos.mp3?rlkey=4v565c0abd4oin2ph6dva5u9f&st=gglhta3l&dl=1",
+    349: "https://www.dropbox.com/scl/fi/lbmifjjev18j87qfzm5za/349-Del-Santo-amor-de-Cristo.mp3?rlkey=zgo7cb6g24dimj8zf3h1w1kf1&st=93ewiwom&dl=1",
+    350: "https://www.dropbox.com/scl/fi/3gdsr4g2ugo16sagngsh3/350-Conf-o-en-Jes-s.mp3?rlkey=dv0cunk03c2qhow9cdqx82l2n&st=7l15hp2w&dl=1",
+    351: "https://www.dropbox.com/scl/fi/ddc56jtb8x12dnu99vqhl/351-Amarte-solo-a-t-Se-or.mp3?rlkey=ubyo70axg4vkpw4hvgf5z73o4&st=clv0n85i&dl=1",
+    352: "https://www.dropbox.com/scl/fi/0vkroclnxodqsgkuiiwbc/352-Ya-pertenezco-a-Cristo.mp3?rlkey=w2tvykv0hpm2emxn76fzkjdv1&st=7c4y8z60&dl=1",
+    353: "https://www.dropbox.com/scl/fi/od7skqnn8hzxvtw52j9qz/353-Un-mandamiento-nuevo.mp3?rlkey=idpl7sdjohj52f9fcspsvcjxu&st=u8e90ck6&dl=1",
+    354: "https://www.dropbox.com/scl/fi/0mesosmvtqbfh6uxtf94i/354-El-amor-permanenecer.mp3?rlkey=nrhtp417v1f2s3maceoweoiog&st=kjgh2g63&dl=1",
+    355: "https://www.dropbox.com/scl/fi/i4rcgxxfq9o23m7zszmhc/355-La-gente-de-nuestro-tiempo.mp3?rlkey=pq179568pg5i1xzbgjmykxv3d&st=caliz6l2&dl=1",
+    356: "https://www.dropbox.com/scl/fi/imx0vjdo1yldjo1y4kv0y/356-Mi-paz.mp3?rlkey=wm3bjpgdzintblxpvuz02dbmk&st=3csnai21&dl=1",
+    357: "https://www.dropbox.com/scl/fi/esfz32sle72wmsw4gjojd/357-Amor-Amor.mp3?rlkey=5ysk1hfu5l4k1omvpodkh1h13&st=i89ppco4&dl=1",
+    358: "https://www.dropbox.com/scl/fi/5sjuhz2rcdgfk2gnrlxpf/358-Somos-uno-en-esp-ritu.mp3?rlkey=hhs2ecx6bzi4rzu4zo4qhmxm7&st=ax7pfg9s&dl=1",
+    359: "https://www.dropbox.com/scl/fi/govkg68mearrr62m7z18q/359-El-gozo-del-Se-or.mp3?rlkey=1ohh1adnmg5jueq5nh04dssz6&st=uiglsqkp&dl=1",
+    360: "https://www.dropbox.com/scl/fi/swpnu0s2re8yru74rmmz8/360-Canten-con-alegr-a.mp3?rlkey=5gsyiui9gj8arb0n9qpzsbejn&st=q35zwi3n&dl=1",
+    361: "https://www.dropbox.com/scl/fi/63gup940hohdzvbwj8gav/361-Grande-gozo-hay-en-mi-alma.mp3?rlkey=n9mob75z51fv4sy0i5nk4tv11&st=r29irqqz&dl=1",
+    362: "https://www.dropbox.com/scl/fi/d7ieolo4wc68nu4dprjm7/362-Solo-no-estoy.mp3?rlkey=9w4ocp4zncdy3tlisrgifyx2h&st=g88pel11&dl=1",
+    363: "https://www.dropbox.com/scl/fi/fnm89x9qgylo411rpjqlg/363-Oh-mi-santo-Dios.mp3?rlkey=vxmjfctzqqvfqhtwzlwkd2h5k&st=w3ascd0m&dl=1",
+    364: "https://www.dropbox.com/scl/fi/o2za85dxajxi3myk0rcy2/364-Jehov-es-mi-Pastor.mp3?rlkey=aw5229e5psu41319tmwprdnn7&st=2hf15ckh&dl=1",
+    365: "https://www.dropbox.com/scl/fi/vvdy2wqhmiod1spmp3yu6/365-Los-que-esperan-en-Jehov.mp3?rlkey=dnl9fj7itl7lbgpbwbnyvx6lc&st=jy8c3brn&dl=1",
+    366: "https://www.dropbox.com/scl/fi/d5hd0dckvq3j44i4pntnu/366-En-Jesucristo.mp3?rlkey=nubx6kfk0lafknt4ted8ioxyz&st=4vv42x2b&dl=1",
+    367: "https://www.dropbox.com/scl/fi/k9smxpn8ie7nqnrspn06h/367-Confiado-Estoy.mp3?rlkey=4h7jppl03u5c1xx32y81q4qez&st=mc80sjzs&dl=1",
+    368: "https://www.dropbox.com/scl/fi/1a0wpr5qecsp9exl8479j/368-D-a-en-d-a.mp3?rlkey=7o0vs0lyk7ykhu4qfas9w5h32&st=cf3a1xq5&dl=1",
+    369: "https://www.dropbox.com/scl/fi/uvf82bc6x56fs5vhq5k7f/369-Cuando-Cristo-vino.mp3?rlkey=9o2bth9efe7bof1dejmt5kde0&st=zjv6hud2&dl=1",
+
+    371: "https://www.dropbox.com/scl/fi/js6up93jwwqyksh6d61e5/371-Cu-n-dulce-es-confiar.mp3?rlkey=3q74tt1mky7t0flnx73xwzhoi&st=dhb9r97r&dl=1",
+    372: "https://www.dropbox.com/scl/fi/609x1jmr9vkpz9vzjspiv/372-Jes-s-me-pastorea.mp3?rlkey=qb6ayjc6rbqlrzhil8l6uys7r&st=4kbfw5vu&dl=1",
+    373: "https://www.dropbox.com/scl/fi/idwcaqdoak987lt60n1nv/373-Estoy-bien.mp3?rlkey=aad97m42m8o6wc4wsofi1yej3&st=jil1ehyy&dl=1",
+    374: "https://www.dropbox.com/scl/fi/benk8qay0nt23m7miknta/374-Sigo-confiando-en-Jes-s.mp3?rlkey=julngxjt9nuwv8vjz6geliaqf&st=wyl8flms&dl=1",
+    375: "https://www.dropbox.com/scl/fi/smw0rzny1g3o6gcjsfv5z/375-Siempre-conmigo-est.mp3?rlkey=0lm17s2uo5ssbj2mvszs5ae66&st=ejp9abrh&dl=1",
+    376: "https://www.dropbox.com/scl/fi/oylmutuh883aahcnp5p66/376-conf-o-en-Jehov.mp3?rlkey=pciwzjo3yka42inrjms4tezvh&st=1sjz08hc&dl=1",
+    377: "https://www.dropbox.com/scl/fi/q7025p6u9cns4kp4yto7c/377-Descanso-en-t.mp3?rlkey=igmc4w5loflzqu09axkvilhbl&st=93thqt83&dl=1",
+    378: "https://www.dropbox.com/scl/fi/b5a934vvcsayyi4he63pf/378-Noble-Sost-n.mp3?rlkey=zdhmnrg88e9anjm1vf9cdunkx&st=ig1x1n6q&dl=1",
+    379: "https://www.dropbox.com/scl/fi/fmweb7o85ukp562hbstez/379-An-mate-y-esfu-rzate.mp3?rlkey=vqqi9cqabofwvu4yac2i7mlz2&st=p6t22p0v&dl=1",
+    380: "https://www.dropbox.com/scl/fi/6pazdmnxgv18avfzg4nra/380-L-mpiame-Se-or.mp3?rlkey=893c82rpzjpa6v1kjfnnpf48y&st=lolm5c14&dl=1",
+
+    382: "https://www.dropbox.com/scl/fi/xy0fqsexzw0njc7k99jfx/382-Mi-coraz-n-oh-examina-hoy.mp3?rlkey=1oogglkzc9lnqxb449qqtipaz&st=3n0qbxar&dl=1",
+    383: "https://www.dropbox.com/scl/fi/36urkyhues3kjrczbzbkc/383-Si-fui-motivo-de-dolor.mp3?rlkey=rqze84smmwe1cc5vnw21tgkil&st=nk57gwtx&dl=1",
+    384: "https://www.dropbox.com/scl/fi/jxrnkynu7z5n93427b63v/384-Hazlo-lo-que-quieras.mp3?rlkey=duy9jd95pnoaq9abvlcc1gase&st=3o2epqej&dl=1",
+    385: "https://www.dropbox.com/scl/fi/ybb0v2gwz84zp9v8nk22v/385-Perd-n.mp3?rlkey=dle9bndn5f8l1l3uw07vudnwl&st=yy0pkyjz&dl=1",
+    386: "https://www.dropbox.com/scl/fi/kksobivf99svpp1fx6xt4/386-Cristo-es-mi-dulce-Salvador.mp3?rlkey=6zicp2k3pj06uwwr4y471rf5i&st=yl7ppw2y&dl=1",
+    387: "https://www.dropbox.com/scl/fi/yvao5w9oucs36001cytd3/387-Dulce-comuni-n.mp3?rlkey=ar1twr2j34pwnvt565aymlfjo&st=o8qyxdek&dl=1",
+    388: "https://www.dropbox.com/scl/fi/wnf8j5v2w3gxa8peismkh/388-Hay-momentos.mp3?rlkey=pif5c5gxc66vs0hvefom0napa&st=0cxtimdb&dl=1",
+    389: "https://www.dropbox.com/scl/fi/23n099j68xouxsso2s9ob/389-Amarte-es-lo-mejor.mp3?rlkey=6xpecfffa55y6t81x2n2tz6b5&st=63md81z4&dl=1",
+    390: "https://www.dropbox.com/scl/fi/45n3vz3qxrl8wg3bqz3dh/390-Cristo-vive-en-m.mp3?rlkey=ogqk76086qs8uz2qwepsed0az&st=da7lbntx&dl=1",
+    391: "https://www.dropbox.com/scl/fi/5w21n4tp9p5ov5hdhfdeb/391-Ciertamente-el-bien-de-Dios.mp3?rlkey=9eq462f6vk6cne4qxgkuke3xy&st=7711zif6&dl=1",
+
+    393: "https://www.dropbox.com/scl/fi/2pr6vwv0mlqhirkvg7fe3/393-A-los-pies-de-Jesucristo.mp3?rlkey=gzkadn6wneajklw0odddgwj5z&st=83k167wc&dl=1",
+    394: "https://www.dropbox.com/scl/fi/ac6l6vka2jw7d4okg2fks/394-Cuando-andamos-con-Dios.mp3?rlkey=gvg91ukr3wm74r8wzoj83jaos&st=kzjfh1qd&dl=1",
+    395: "https://www.dropbox.com/scl/fi/v64qq1q9acvv2upmol2ix/395-Oh-Cristo-yo-te-amo.mp3?rlkey=m6f6fyveqppa575h8v3sf9efs&st=n8v4toob&dl=1",
+    396: "https://www.dropbox.com/scl/fi/vxcff2ql51gexwr770cbo/396-Oh-Cristo-m-o-Rey-de-mi-alma.mp3?rlkey=anbfv0pv6egmgmknaptvrgpn8&st=sujhsmkm&dl=1",
+    397: "https://www.dropbox.com/scl/fi/ewqe35f4ccg6ea9c93dnt/397-En-mis-angustias.mp3?rlkey=iktk3x74k5g1sgvmgcb9doozg&st=5nspsm8c&dl=1",
+    398: "https://www.dropbox.com/scl/fi/drf3tmt5w82m80nw053dn/398-Pacientemente.mp3?rlkey=0jhpoar5d7370ll7fuw4n0o5o&st=zk6q85te&dl=1",
+
+    400: "https://www.dropbox.com/scl/fi/1f2tv4ymuh6hwte3pw50b/400-Quiero-cantar-una-linda-canci-n.mp3?rlkey=z284glx9zfw3yynqgzshgxbmp&st=pvhs07cs&dl=1",
+    401: "https://www.dropbox.com/scl/fi/ebt0twxrihp5qwmbsb516/401-Mi-pensamiento-eres-t-Se-or.mp3?rlkey=tisrl4tn8gdq77u9dbk2y3v4p&st=z6a9qmpb&dl=1",
+    402: "https://www.dropbox.com/scl/fi/pkt2h5t35iqah7gvth0eg/402-La-vid-y-los-p-mpanos.mp3?rlkey=hfrdxrrjgdglb0tmw5txif0i8&st=sd9237mr&dl=1",
+    403: "https://www.dropbox.com/scl/fi/wqk2yektbaivo6can2cwi/403-Oh-Dios-rev-lame-tu-voluntad.mp3?rlkey=uuc7uwukwkxu4120aya3ve64u&st=xnq67l0n&dl=1",
+    404: "https://www.dropbox.com/scl/fi/nkk0my59izdcpmifjzs4w/404-Oh-deja-que-el-Se-or.mp3?rlkey=e8yz0hexwi24b50fge0vtklku&st=rll0frg1&dl=1",
+    405: "https://www.dropbox.com/scl/fi/4sjgtoobzk8erqcv60yvw/405-Cu-n-dulce-el-nombre-de-Jes-s.mp3?rlkey=wlxn1os4h4msxrhro6goagf5m&st=asi1apv9&dl=1",
+    406: "https://www.dropbox.com/scl/fi/2ti8mjb8eopv7vfd7q7m5/406-Si-dejas-t-que-Dios-te-gu-e.mp3?rlkey=62vix0dlk8du3u5tpq5szmy3z&st=umy4joyp&dl=1",
+    407: "https://www.dropbox.com/scl/fi/h6fwa1s1i25x1a72192wa/407-Me-gu-a-l.mp3?rlkey=ivwflvqhlbaz5vmolssu62sov&st=r2fs5awp&dl=1",
+    408: "https://www.dropbox.com/scl/fi/69s26ohdmss4miwoh2voy/408-Cristo-es-gu-a-de-mi-vida.mp3?rlkey=y652p4wu46s4me8ssr1yfss14&st=5sd9lkaw&dl=1",
+    409: "https://www.dropbox.com/scl/fi/hso8by7t9kg4in1rl94f9/409-Cristo-mi-camino-gui.mp3?rlkey=jz2ke8633momp16a0eceu87ob&st=b2tqb1ir&dl=1",
+    410: "https://www.dropbox.com/scl/fi/d46ix3w8tgxlxi9eq647u/410-Que-mi-vida-entera-est.mp3?rlkey=34g540lpbx6lz3qwan8vp2495&st=dblu007t&dl=1",
+    411: "https://www.dropbox.com/scl/fi/ma0ffrqk1t8rvlyter0ke/411-Caut-vame-Se-or.mp3?rlkey=68on7psq7a3gyvoxirfpeipar&st=b4lvk11b&dl=1",
+    412: "https://www.dropbox.com/scl/fi/3kifw5byzjiufxbeildg1/412-Oh-yo-quiero-andar-con-Cristo.mp3?rlkey=3sgsad4tu18qfhbbhg9qun7zd&st=r9856kif&dl=1",
+    413: "https://www.dropbox.com/scl/fi/xrdz8z1cfq6z83vwabihd/413-He-decidido-seguir-a-Cristo.mp3?rlkey=7xua5ow7edp86wr339xnijd07&st=c0m9flv4&dl=1",
+    414: "https://www.dropbox.com/scl/fi/lkex2rpuvh7cgsgkrkzt0/414-Oh-Cristo-anhelo-agradarte.mp3?rlkey=umqjnn8wxok063rwbz2chkift&st=1f6gi7bo&dl=1",
+    415: "https://www.dropbox.com/scl/fi/gd10i42vlgt72nlsswega/415-Busca-primero-el-reino-de-Dios.mp3?rlkey=hoiyo1feca5pqhh4ep5tfeezk&st=hug31g9r&dl=1",
+    416: "https://www.dropbox.com/scl/fi/e4bby1qyyho1cyqrk163u/416-Cristo-fiel-te-quiero-ser.mp3?rlkey=744ohj6x4sn9tp8shqsnt67hw&st=mrrxbfwf&dl=1",
+    417: "https://www.dropbox.com/scl/fi/b6h73yvw085mextaoh1a1/417-Sed-puros-y-santos.mp3?rlkey=ogz54uda6ykvas301fkbi0b2i&st=e9lsry2b&dl=1",
+    418: "https://www.dropbox.com/scl/fi/sdcryzkkhlz2gogs07bli/418-Se-or-t-me-llamas.mp3?rlkey=pqxgx5anjys6mn1yaxypx177p&st=wmhh6ofb&dl=1",
+    419: "https://www.dropbox.com/scl/fi/fchatjse5022xts8dc69z/419-Un-vaso-nuevo.mp3?rlkey=wh0x03thvocjolagwncklqp44&st=02klvm1a&dl=1",
+    420: "https://www.dropbox.com/scl/fi/ybt6rs75dqm1hiw1odtqp/420-Te-vengo-a-decir.mp3?rlkey=2cqsmwzqw9dejekeifut1upwa&st=g7786icm&dl=1",
+    421: "https://www.dropbox.com/scl/fi/eo4jqd27e013nj1nv5sti/421-Con-mis-labios.mp3?rlkey=32wpvpx3g0zx1d48oio9hxncg&st=cd6l3766&dl=1",
+    422: "https://www.dropbox.com/scl/fi/vkjsds2mtpwhsf08jdlta/422-Que-el-sentir-de-Jesucristo.mp3?rlkey=9i2qa3uorxh7thut6zq5los5k&st=kkf8k6hj&dl=1",
+    423: "https://www.dropbox.com/scl/fi/u0y5cahg6rw28qasz0gf5/423-Hazme-un-instrumento.mp3?rlkey=axb95ig5by7hw4zm80bgwb6ms&st=b6sh4c4q&dl=1",
+    424: "https://www.dropbox.com/scl/fi/t0kjrdcxuolvvju5yxm9j/424-Dejo-al-mundo-y-sigo-a-Cristo.mp3?rlkey=n17k4but9cflih7bb3qrafu3v&st=obqul61m&dl=1",
+    425: "https://www.dropbox.com/scl/fi/8wzlt1xj5rlv63lqosic8/425-Bendito-el-Se-or.mp3?rlkey=7f23trqepga7oyse0vf1zhb9g&st=ptll77yh&dl=1",
+    426: "https://www.dropbox.com/scl/fi/sqyb1wnvdv7fnya5cam2b/426-T-has-venido-a-la-orilla.mp3?rlkey=pf8z6n7uq7cqyepnchhd3lkji&st=hq5p24s1&dl=1",
+    427: "https://www.dropbox.com/scl/fi/z8f0g0zh8xa2fb2uk7c42/427-Dios-cuidar-de-ti.mp3?rlkey=494ipe42kgxxi4u5qrcidd61y&st=njlm4g0r&dl=1",
+    428: "https://www.dropbox.com/scl/fi/vogzrgr7s82sstil23dep/428-Vencedor.mp3?rlkey=r0al9m4utlz6gigd00meyksuv&st=6ypkacql&dl=1",
+    429: "https://www.dropbox.com/scl/fi/nhx4n9e2bz2qpggh1avtc/429-Yo-no-quiero-pecar.mp3?rlkey=o87xdc3cytv067vt71i3jxxz5&st=hq8ha6i3&dl=1",
+    430: "https://www.dropbox.com/scl/fi/tqmqflt22wy0lbf2xxi1z/430-Entenderemos.mp3?rlkey=69ka9avpb8seefwg41k4zl96g&st=5t1j68pa&dl=1",
+    431: "https://www.dropbox.com/scl/fi/6wod1ccaw46gfrds8pkza/431-Tentado-no-cedas.mp3?rlkey=ncgmfgagmvr7cgge1qutux87r&st=uh3f7c38&dl=1",
+    432: "https://www.dropbox.com/scl/fi/w058fg7wgbez1mggdhlua/432-Firme-Estar.mp3?rlkey=qyf7gu15n7bfnnrjur76kk4wm&st=0fz1n8dc&dl=1",
+    433: "https://www.dropbox.com/scl/fi/eo5gndfgve2xvyrm11uun/433-Despu-s-de-la-tormenta.mp3?rlkey=hcjsf67mwjbqbygzgw29et331&st=ghwsws0x&dl=1",
+    434: "https://www.dropbox.com/scl/fi/5kcmag1i8efzwiu5ejzfk/434-Victoria-en-Cristo.mp3?rlkey=udlwv1qag8ys1b5n49mz4t64a&st=dknmzcud&dl=1",
+    435: "https://www.dropbox.com/scl/fi/9waeokxqzwfne85e3ytc4/435-D-bil-soy.mp3?rlkey=r5csr6rj3hhdumdzohnrxqi2z&st=d8dj3grz&dl=1",
+    436: "https://www.dropbox.com/scl/fi/q6yapk517aw43fgko4kec/436-Bendiciones-cu-ntas-tienes.mp3?rlkey=0d44rlniangrs1yb8phwepe8z&st=9iyfu9rb&dl=1",
+    437: "https://www.dropbox.com/scl/fi/66lqy7zrsecoyneqgwep3/437-Yo-quiero-vencer.mp3?rlkey=06z94bc8fybjgb69z83rmww8q&st=8hjor0vd&dl=1",
+    438: "https://www.dropbox.com/scl/fi/kn53lte4vj08yqm6sblhg/438-Su-sangre-es-mayor.mp3?rlkey=ew9zvh56mvqfo3et7yy2l7fcy&st=3vv1e0pn&dl=1",
+
+    440: "https://www.dropbox.com/scl/fi/it3oy6n9fcciaa97jz905/440-Pon-tus-ojos-de-Cristo.mp3?rlkey=wv5ovz9q86483sbnyuujxxz7p&st=ng3j3avc&dl=1",
+    441: "https://www.dropbox.com/scl/fi/22r6kqs4i895ml888mevq/441-Jehov-jireh.mp3?rlkey=3ggf35sfn9gs97e1bd5sqbccg&st=fpd330n7&dl=1",
+    442: "https://www.dropbox.com/scl/fi/3gdfxpux6nh6fxnbtqag9/442-El-conoce-mi-camino.mp3?rlkey=mz9hl56r9yd3buddyz9d246xd&st=2p2psnm9&dl=1",
+    443: "https://www.dropbox.com/scl/fi/mnh0gw8v8xwf7m2ntkur5/443-El-Se-or-es-bueno.mp3?rlkey=s7rtx2jw937tp4gtfetkxak7m&st=odglw1je&dl=1",
+    444: "https://www.dropbox.com/scl/fi/kz3ral46cdyafn8ackbjl/444-Hasta-Entonces.mp3?rlkey=pg3vxdzbuhidgob8t68n3jhl4&st=bod9fhbw&dl=1",
+
+    446: "https://www.dropbox.com/scl/fi/a9vl4u3mhyuhbcaibl7w7/446-Regocijad.mp3?rlkey=8h0b5ugkct35mca3dlwsg36wi&st=kziqx5gg&dl=1",
+    447: "https://www.dropbox.com/scl/fi/37ej7iw33f24oeuyyfi8r/447-Dad-Gracias.mp3?rlkey=12ujm31jui1fhiyknm4cs7pj3&st=3oqhy5m4&dl=1",
+    448: "https://www.dropbox.com/scl/fi/mpr9la3net1lflfi6jimt/448-La-Iglesia-sin-mancha.mp3?rlkey=keujq3kapgipn81m0ziq0ybtq&st=25cxyhio&dl=1",
+    449: "https://www.dropbox.com/scl/fi/kqs01hcga9vqzrhaw7u1c/449-Mi-iglesia-querida.mp3?rlkey=9pg51848zn6em4rlbztjei1kn&st=4gyaru0n&dl=1",
+    450: "https://www.dropbox.com/scl/fi/fbnm23eqnj32gvkchlx0d/450-De-la-Iglesia-el-fundamento.mp3?rlkey=3zvlvb75xthtuafimkrbd4rym&st=y8way2dl&dl=1",
+    451: "https://www.dropbox.com/scl/fi/iuyybqyvjhiq6tlezhgnr/451-Iglesia-de-Cristo.mp3?rlkey=vh5k5iqwa6bpv6fvm8790pfnf&st=2d4pjqis&dl=1",
+
+    453: "https://www.dropbox.com/scl/fi/i7584185wz7ybtgi75va2/453-En-la-Iglesia.mp3?rlkey=buf407x396v8w8r6oj4ctnuoj&st=7pfziang&dl=1",
+
+    455: "https://www.dropbox.com/scl/fi/ml0gqq71de23qchyvan9e/455-Dios-de-gracia-Dios-de-gloria.mp3?rlkey=dp1gfbwj1bf6056yz2232s98t&st=ii32ijim&dl=1",
+    456: "https://www.dropbox.com/scl/fi/l0zvk948p9j0utme6ycqz/456-Hoy-por-los-Santos.mp3?rlkey=gj07svwtfzi7xr3uuvyh303o7&st=iif8ssqr&dl=1",
+    457: "https://www.dropbox.com/scl/fi/pwvepgmsfpjz6yjofpdb4/457-La-familia-de-Dios.mp3?rlkey=6zlzjz9wkg1d71hod8wfppo9a&st=ahwd9k6u&dl=1",
+    458: "https://www.dropbox.com/scl/fi/8jt0kycc1uibye0avg9is/458-Un-solo-cuerpo.mp3?rlkey=brn1qqmpgbourev87oca7h8y6&st=nqbbfg5c&dl=1",
+
+    460: "https://www.dropbox.com/scl/fi/pwcvj94k9e1xwqnj6rdth/460-Am-monos-Hermanos.mp3?rlkey=lecqsdbtz03wds3o13nz2jwbj&st=j4gxbyh4&dl=1",
+    461: "https://www.dropbox.com/scl/fi/cxysh5ct8m5drp3x62e13/461-Somos-uno-en-Cristo.mp3?rlkey=d78arudys40d3tb3bialr9ibh&st=agwfkzqa&dl=1",
+
+    463: "https://www.dropbox.com/scl/fi/2l72jfqdxy2x7yg9v978t/463-Miren-que-bueno.mp3?rlkey=ueal9r9jkua77wuorci80nw7g&st=6rilagq2&dl=1",
+    464: "https://www.dropbox.com/scl/fi/aa3jiohfvrcn4w7rv18y6/464-Nuevas-Alegres.mp3?rlkey=b0xxq71r8mtoyszk34bi0ttd5&st=igxoft97&dl=1",
+    465: "https://www.dropbox.com/scl/fi/y9cz6ul8ldm21d0x92qgf/465-No-te-d-temor.mp3?rlkey=r0ci65klmyahnr7bnf0eeoech&st=r61pr2rd&dl=1",
+    466: "https://www.dropbox.com/scl/fi/w9dawh2i3w829f6v2hfwn/466-Testifica.mp3?rlkey=2nit2eizwunh2up1l3kp0b2h3&st=mcg0av4l&dl=1",
+    467: "https://www.dropbox.com/scl/fi/lxdiihza1y92333pgpt0a/467-Recibire-s-Poder.mp3?rlkey=s40inzlrj2o011vxkqt2ig233&st=fpw7pa6n&dl=1",
+    468: "https://www.dropbox.com/scl/fi/8cb5fwlsvmimlx8bnies1/468-Grato-es-decir-la-historia.mp3?rlkey=d2dgw4u4h7fibs2kiv1rlxc0u&st=wl1peq7l&dl=1",
+    469: "https://www.dropbox.com/scl/fi/cdt4umitsg8bk9rdl7n0e/469-En-el-nombre-del-Se-or-Jes-s.mp3?rlkey=i62sqyrssapnn6rxrmy2k2py4&st=7425t9v6&dl=1",
+    470: "https://www.dropbox.com/scl/fi/4668cj8iknlm32rrbskof/470-Vamos.mp3?rlkey=a7ukgo0caq53hv3snlsxi9rxa&st=w8y2j9it&dl=1",
+    471: "https://www.dropbox.com/scl/fi/4t0dgtsr1hcgaflta2u5o/471-Los-que-con-l-grimas.mp3?rlkey=3il26s3cdxu31tv0ubakimw07&st=34ad5bva&dl=1",
+    472: "https://www.dropbox.com/scl/fi/i3f8iy25cumgqgzmc59vi/472-Anhelo-trabajar-por-el-Se-or.mp3?rlkey=wxzow4k3luahdnhzamfz2gyhy&st=aaxrlsqa&dl=1",
+    473: "https://www.dropbox.com/scl/fi/feehqkiq312b0rfu8b0p7/473-El-mundo-hoy.mp3?rlkey=nky1bg4z7rw6ep8v5mpsb5fjb&st=b1opbshe&dl=1",
+    474: "https://www.dropbox.com/scl/fi/yi345vujxdsqvjurfnqmj/474-Ved-los-millones.mp3?rlkey=q7h3ghbtnjqsis77xlqxtbi6i&st=19u50mpz&dl=1",
+    475: "https://www.dropbox.com/scl/fi/55o198c3qeniuusqi0jmq/475-Hasta-lo-ltimo.mp3?rlkey=zthlp98r47ntu2sn925703nxz&st=etunzlmr&dl=1",
+
+    477: "https://www.dropbox.com/scl/fi/k26bxfym3exdm7ow7hcmq/477-Mensajeros-del-Maestro.mp3?rlkey=x7s0j2zku8d4yl0ybd4gm153b&st=3wy0f1sm&dl=1",
+    478: "https://www.dropbox.com/scl/fi/d0hior14g1jvewzv7k88w/478-La-paz-os-dejo.mp3?rlkey=5577e8knd28prr15xjrjdgdta&st=d9vsfi22&dl=1",
+    479: "https://www.dropbox.com/scl/fi/pucitt06z7f4hoduk9bxc/479-Heme-aqu.mp3?rlkey=rimyjqwyvomkw588y29v397io&st=7kufxmr1&dl=1",
+    480: "https://www.dropbox.com/scl/fi/g84zckhocpi8851p6w4t2/480-A-prisa-Iglesia.mp3?rlkey=cwi58uvhb95jq8232rohiqlvm&st=0wq9raoo&dl=1",
+
+    482: "https://www.dropbox.com/scl/fi/ogepi9pk68al9byb7yo46/482-Oh-que-amigo-nos-es-Cristo.mp3?rlkey=kg4jzmsna0w5cy9aj34qu5lxa&st=xjkq689v&dl=1",
+    483: "https://www.dropbox.com/scl/fi/mkfswwoa4ctggp4vv52qo/483-Dele-tate-asimismo-en-el-Se-or.mp3?rlkey=nz0m1rr80hbrwokis69rlxo5h&st=nebpx6my&dl=1",
+
+    485: "https://www.dropbox.com/scl/fi/q0ncg7wsdy05a7vkf8hh5/485-A-solas-al-huerto-yo-voy.mp3?rlkey=4g4wahezieeot4tscgx1tvgjh&st=mqrx594g&dl=1",
+    486: "https://www.dropbox.com/scl/fi/307n8am39wm07nsdjz4s8/486-Oh-Se-or-de-ma-ana-oir-s.mp3?rlkey=8br1imk6kpknq7bv4hxxvnhyf&st=8yp6p4yg&dl=1",
+    487: "https://www.dropbox.com/scl/fi/3n9dalwt5afsqsf3ild0k/487-Cristo-queremos-dar-gracias.mp3?rlkey=05ikcnoiipw0tqiywm7alxcrv&st=qx4ed8vp&dl=1",
+    488: "https://www.dropbox.com/scl/fi/vneg5kbt0u94cwtj2w5lf/488-Gracias-oh-Se-or.mp3?rlkey=u657wifun4n861a0uu138zakz&st=inwf8vmq&dl=1",
+    489: "https://www.dropbox.com/scl/fi/23iu9qo96c2aiza9lhkff/489-Abre-mis-ojos.mp3?rlkey=zdo8wkoq2u883c1w6u51hit11&st=jji9xao9&dl=1",
+    490: "https://www.dropbox.com/scl/fi/lboebhbcv2kw4trvwa0w0/490-Dilo-a-Cristo.mp3?rlkey=513y6vao0schwbwxeooqb9chb&st=mevw946s&dl=1",
+    491: "https://www.dropbox.com/scl/fi/ufvqyjcshq1n8w1tjtpos/491-Padre-nuestro-celestial.mp3?rlkey=k2ftmytskwzduzb571vi3u6zm&st=unw4vnkt&dl=1",
+    492: "https://www.dropbox.com/scl/fi/mnimq7qeac4qz6e2fsgw6/492-Gracias-damos-Se-or.mp3?rlkey=6wgg4mgpbity4h75vk0c4mf9b&st=rv1e7832&dl=1",
+    493: "https://www.dropbox.com/scl/fi/u48flv41lp5cv5d9n4kfz/493-Dulce-Oraci-n.mp3?rlkey=zzepmvmdvdgns92i2a6asy808&st=2zjwgh64&dl=1",
+    494: "https://www.dropbox.com/scl/fi/n1qvtbbico5lh008p3bv5/494-Abba-Padre.mp3?rlkey=74je1l9nsmv183sqrczkkt5n2&st=y4p65hxn&dl=1",
+    495: "https://www.dropbox.com/scl/fi/famqvmdz0qbitls043e7f/495-Por-estos-alimentos-Dios.mp3?rlkey=w74n0k41hhdv6mg1ghderdsok&st=t35g1byn&dl=1",
+    496: "https://www.dropbox.com/scl/fi/chvwqwhsmy7ledsvul8s9/496-Has-o-do-Se-or.mp3?rlkey=babw566f93f91qz0tuuy3c3k5&st=72bro7j9&dl=1",
+    497: "https://www.dropbox.com/scl/fi/k4n2m9sm3j77tsvgq83oj/497-Av-vanos-Se-or.mp3?rlkey=bnm2343y6c30k7rpoohx53ykq&st=u2pd1a68&dl=1",
+    498: "https://www.dropbox.com/scl/fi/5gvrvcdncwrycscrlpbib/498-Yo-te-sirvo.mp3?rlkey=jx3j8rrm73i76e0m9oyou0wb9&st=dyc0kcst&dl=1",
+
+    500: "https://www.dropbox.com/scl/fi/gt7c0x06a8c7mmiiq25zh/500-A-servir-a-Cristo.mp3?rlkey=zxbx2mqa8sqmagc681qzc9zhu&st=kunnv8ql&dl=1",
+    501: "https://www.dropbox.com/scl/fi/bqcnpndt6xmhcqqpj284j/501.wma?rlkey=kxsptiijjmhjn3skr1u6r205p&st=h7goe96e&dl=1",
+    502: "https://www.dropbox.com/scl/fi/wf60rpelgplprtjyydelm/502.wma?rlkey=m2axw7vgglb6h27vvdcmndwp5&st=es2nmcmr&dl=1",
+    503: "https://www.dropbox.com/scl/fi/pefps40i0zpjtqbyi4p0t/503.wma?rlkey=9u7f2g21jgtinqwvi7rv6ku0w&st=u8x71c01&dl=1",
+    504: "https://www.dropbox.com/scl/fi/0mxl6q0fd2ronr374gxhb/504.wma?rlkey=wvza1w7m7w21igwqof4ao92zp&st=pw6frgft&dl=1",
+    505: "https://www.dropbox.com/scl/fi/xo8abmzr8nyev22k0ruw4/505.wma?rlkey=ipx8us7kxgxu6xz8rcvs27m9n&st=4nsi8gna&dl=1",
+    506: "https://www.dropbox.com/scl/fi/uzjjzw8euedrwq39enpk4/506.wma?rlkey=15n5wdu1ajsj8ef16j6v4m4ed&st=pl59fiu5&dl=1",
+    507: "https://www.dropbox.com/scl/fi/1y7hbpieki1sbcsmo2awp/507.wma?rlkey=xl7ngpztpdim32ir92t5o4y2g&st=yg4pdt1i&dl=1",
+    508: "https://www.dropbox.com/scl/fi/1yrf3y97z7ir652ipigdo/508.wma?rlkey=cyuq6ukna2p4rj4qddbsqor0a&st=t55ldkkz&dl=1",
+    509: "https://www.dropbox.com/scl/fi/arv8b1uagjduc8w18zmzv/509.wma?rlkey=7invona2k0nwnfe9kzqlpokce&st=l1qji6xk&dl=1",
+    510: "https://www.dropbox.com/scl/fi/i043imfkwc3fg8ahrhiur/510-Fiel-mayordomo-ser.mp3?rlkey=gkfc79hdaw1habzz0mexlqg4i&st=j3jcpmt1&dl=1",
+    511: "https://www.dropbox.com/scl/fi/3q12p06a07e7281ln780d/511-Gozo-da-servir-a-Cristo.mp3?rlkey=ik49i89z9yjnpljrhr4g2p3dp&st=gwhi716i&dl=1",
+    512: "https://www.dropbox.com/scl/fi/wyujryu9i8upi8j9ql5lg/512-En-las-aguas-de-la-muerte.mp3?rlkey=owvvzpddcv1alz7eytbfiixcv&st=4rphx7rh&dl=1",
+    513: "https://www.dropbox.com/scl/fi/45jlwgih6qeo8815i8k6d/513-Los-que-somos-bautizados.mp3?rlkey=hf451mth35kl6n8ayseie53wy&st=m4u1j2e7&dl=1",
+    514: "https://www.dropbox.com/scl/fi/s42kcjxa55xqwh6fyzidk/514-Yo-viv-a-en-el-pecado.mp3?rlkey=m729irpeqlzdflvatlbzdw2ev&st=zgd5meo1&dl=1",
+
+    516: "https://www.dropbox.com/scl/fi/395b9c1k8vg5qxm1mf97c/516-La-cruz-excelsa.mp3?rlkey=jzf0kluj1v016l28mua2y7ryh&st=np3bddd0&dl=1",
+    517: "https://www.dropbox.com/scl/fi/4qebwrn69md7nqjumohii/517-Obediente-a-tu-mandato.mp3?rlkey=kzew4vwkgv9mnhfp4feuserbv&st=2apufifa&dl=1",
+    518: "https://www.dropbox.com/scl/fi/z9x56z3goksffnztso19y/518-Rey-de-mi-vida.mp3?rlkey=c5nyl60w2exdagfuablcaif2t&st=48yg7ug7&dl=1",
+    519: "https://www.dropbox.com/scl/fi/wuw2e2wbvmilqunw036m3/519-Aqu-del-pan-partido-tomar.mp3?rlkey=77j7zl0ty4o8ou42e34mthl1v&st=6aer9y7q&dl=1",
+    520: "https://www.dropbox.com/scl/fi/ibljbivbpyseiz9d2n31a/520-Hoy-venimos-cual-hermano.mp3?rlkey=wnylax4202g5x6o6rnlq440rl&st=g92c3qht&dl=1",
+    521: "https://www.dropbox.com/scl/fi/jhtnavr9rsgjifn40sel3/521-Llegamos-a-tu-mesa.mp3?rlkey=zmyffjdjwq815s9sp482iyto7&st=xe4l9q5o&dl=1",
+    522: "https://www.dropbox.com/scl/fi/g18iv4qv7vfhi9g79ogej/522-Es-la-cena-del-Se-or.mp3?rlkey=eqx7903904iy3ts99db19z17a&st=tqabeafk&dl=1",
+
+    524: "https://www.dropbox.com/scl/fi/z4kj4bkyb4iiwgy102uyw/524-Hay-un-precioso-manantial.mp3?rlkey=9zb5g5azjbebq7i5i8cyy597a&st=z0kdmj9n&dl=1",
+    525: "https://www.dropbox.com/scl/fi/t7monyq99cymq82q626rt/525-Venga-a-la-mesa.mp3?rlkey=4cpsdcvsadhag009ng1yi828b&st=nkyuhao3&dl=1",
+    526: "https://www.dropbox.com/scl/fi/8fbocj3nyqiw0h3985wuk/526-Cristo-su-preciosa-sangre.mp3?rlkey=yeom0koa871m43q4l3lk6s23b&st=r1drq05k&dl=1",
+    527: "https://www.dropbox.com/scl/fi/hq7ujfpojveunv56o7jps/527-Recordad-al-Se-or.mp3?rlkey=p3hckdpmaouuxo4l4s3i8w420&st=mqbt03ve&dl=1",
+    528: "https://www.dropbox.com/scl/fi/jn7ejilxv9vwp08rf8pq5/528-Siervos-de-Jes-s.mp3?rlkey=wyg4c9f5pvaieimnb77cjj33s&st=clutdale&dl=1",
+    529: "https://www.dropbox.com/scl/fi/kfnwdu8l04agz6hckmf90/529-A-ti-oh-Se-or.mp3?rlkey=xh7kaa1qu1eq8bg1p1bz9dxpl&st=txx3ncj1&dl=1",
+    530: "https://www.dropbox.com/scl/fi/6uc4tatzhklkujd44suwy/530-Fe-la-victoria-es.mp3?rlkey=lvifcojjo6s9f1tfztv6cdvyt&st=g3rq7gwl&dl=1",
+
+    532: "https://www.dropbox.com/scl/fi/oxonw605ik0rgd1j1d5tz/532-A-combatir.mp3?rlkey=0odypyswlqm2uqwvkkrpgsk3g&st=ofaqannb&dl=1",
+    533: "https://www.dropbox.com/scl/fi/199thmk9479fd36r0crj4/533-Estad-por-Cristo-firmes.mp3?rlkey=ygt0ter5juivifl9ef2a9yneq&st=nu0kxnsb&dl=1",
+    534: "https://www.dropbox.com/scl/fi/az8nn8f702b1i0tp3e85k/534-Adelante-con-valor.mp3?rlkey=59qh99ppz3k5kptcy11msj3nl&st=152dv6x3&dl=1",
+    535: "https://www.dropbox.com/scl/fi/w55wzordc3d93sppccux8/535-Gloria-gloria-aleluya.mp3?rlkey=6droifsk0tn4gs1i6l9r5cmep&st=3ssa15xj&dl=1",
+    536: "https://www.dropbox.com/scl/fi/ej1u7ha616wtjmgsynxdn/536-Sin-t.mp3?rlkey=2gp8m6o3smlplpydohgk8jbib&st=1ygvjubu&dl=1",
+
+    538: "https://www.dropbox.com/scl/fi/mr2lxqo4hym4ijvp7yyr0/538-Soy-yo-soldado-de-Jes-s.mp3?rlkey=95om9v4sk3ivsmrpi8x786gku&st=8x0294l0&dl=1",
+    539: "https://www.dropbox.com/scl/fi/bnrdh36890t9pix7rv1l7/539-Firmes-y-adelante.mp3?rlkey=qscostxmvoxr0daczf0alnu3n&st=nj7u3vl9&dl=1",
+    540: "https://www.dropbox.com/scl/fi/3q0sgcl0p53qwcvgzvppi/540-Sale-a-la-lucha.mp3?rlkey=bqipy02xs45pxjg7qe4z7eh3x&st=nqjj4rs3&dl=1",
+    541: "https://www.dropbox.com/scl/fi/ui3kvifyo8t23okq3i9tb/541-A-la-victoria-nos-llama.mp3?rlkey=6rqazzd1dmg6uki09bk31cd80&st=cua2reyp&dl=1",
+    542: "https://www.dropbox.com/scl/fi/iqhsgukn29zdyab7ry3qu/542-Cristo-nuestro-jefe.mp3?rlkey=r347phv9giwzck4vwo8sqgwzf&st=a6tzxztb&dl=1",
+    543: "https://www.dropbox.com/scl/fi/w8znfpa88as85881bfi9g/543-Ya-Cristo-viene.mp3?rlkey=dtakydtqqikofurnxqqsx0x1z&st=1oex11t7&dl=1",
+    544: "https://www.dropbox.com/scl/fi/dfv1rs9oac0igkb0luikf/544-La-venida-de-Cristo.mp3?rlkey=olp62ev3821ugw7z9fupq4k0m&st=qrlgmwru&dl=1",
+    545: "https://www.dropbox.com/scl/fi/zr4b0mwbfqsjeyz14wjeq/545-Viene-otra-vez.mp3?rlkey=nb2rqwptah0jyi041w7j79njg&st=5fvbgaxi&dl=1",
+    546: "https://www.dropbox.com/scl/fi/zg7jnfx2gorsv26y6elpu/546-Un-d-a-cristo-volver.mp3?rlkey=50pizd0xa27yj7bg8fubzprg6&st=mw1ce5um&dl=1",
+    547: "https://www.dropbox.com/scl/fi/m93u59cyncwanu07ig2ga/547-El-cielo-y-la-tierra-pasar-n.mp3?rlkey=o760dt1b9295dl5de9txvvem4&st=u0vmmuae&dl=1",
+    548: "https://www.dropbox.com/scl/fi/186ipkx28mkeqgkskusel/548-El-Rey-ya-viene.mp3?rlkey=jyrevwz3x6j0nsa9sxp5d2xb2&st=lnji35fo&dl=1",
+    549: "https://www.dropbox.com/scl/fi/j0fsyqrqgc5s4mft1ei5m/549-La-ma-ana-gloriosa.mp3?rlkey=u4ms0f6lpihxgodrvvae4xpnt&st=houxz95m&dl=1",
+    550: "https://www.dropbox.com/scl/fi/6ka8n273mmbn8yehrsg1e/550-Con-la-nuves-viene-cristo.mp3?rlkey=06pdq0lu6xyffyaczq5faacms&st=cmzd70sx&dl=1",
+    551: "https://www.dropbox.com/scl/fi/9v8q4admikdz45g63cs4s/551-Cuando-anuncie-el-arc-ngel.mp3?rlkey=ndxv4vi04prmcu7y346l57bq7&st=zt2bpomi&dl=1",
+    552: "https://www.dropbox.com/scl/fi/o6ube7p3jcojnu312evqp/552-El-poder-del-Esp-ritu.mp3?rlkey=4vdu3zxo81iez1knidgju8s7i&st=fnzss7yi&dl=1",
+    553: "https://www.dropbox.com/scl/fi/6pwhvzaxx6mzjrzei5cac/553-Muy-cercano-est-el-d-a.mp3?rlkey=4mtwkeigucc25j9wkthqj2zdr&st=eatnh6ed&dl=1",
+    554: "https://www.dropbox.com/scl/fi/4bsj6wd5j12srskum7u9p/554-Cristo-viene-otra-vez.mp3?rlkey=hd3ung03cxk9bkv7uyitf289p&st=2578e7qe&dl=1",
+    555: "https://www.dropbox.com/scl/fi/7h9pocm7ylh0se9p7cg0d/555-Le-veremos.mp3?rlkey=p6674s8hf9cvrpvd81ag2oy9a&st=ijb73iur&dl=1",
+    556: "https://www.dropbox.com/scl/fi/nr5spmtu2u9o8j4n166zc/556-En-Presencia-Estar-de-Cristo.mp3?rlkey=6f1yudjzemqt397q36plwnzbs&st=c76yk5hi&dl=1",
+    557: "https://www.dropbox.com/scl/fi/8i6yh9oun1kvbgcp3bccv/557-Yo-solo-espero-ese-d-a.mp3?rlkey=91fu1mr9523okxvmubgluv8f6&st=z6650dw1&dl=1",
+    558: "https://www.dropbox.com/scl/fi/0yrsw6ybpee7517xq0wvs/558-Pudiera-bien-ser.mp3?rlkey=rvrh5awexjozhmi9ltnup19l7&st=t1vriwlx&dl=1",
+    559: "https://www.dropbox.com/scl/fi/ej2ty81o4w4ykay7rshon/559-Yo-podr-reconocerle.mp3?rlkey=86n7it5lc8h0oc9aymrezos01&st=up09wd5c&dl=1",
+    560: "https://www.dropbox.com/scl/fi/bdbw5lpy35iaat9k02t8x/560-Roca-de-la-eternidad.mp3?rlkey=zfc4zinpt42c89d12dalb0pu4&st=6fzy7eae&dl=1",
+    561: "https://www.dropbox.com/scl/fi/13kse1g16b5x8o26ol2dg/561-Es-Se-or-de-los-cielos.mp3?rlkey=i20qzpoac06i72342jcctcho6&st=e3gn4dnk&dl=1",
+
+    563: "https://www.dropbox.com/scl/fi/rf9ocxspd41zb3r2u8v58/563-La-nueva-Jerusal-n.mp3?rlkey=ixywisvphwo0s00i33gnlk65h&st=sfixhzv2&dl=1",
+    564: "https://www.dropbox.com/scl/fi/9r7gk0m9u3var9k8wespy/564-M-s-all-del-sol.mp3?rlkey=g6uixwpig9s1yk0rqeqzqb7d6&st=9bpob4v3&dl=1",
+    565: "https://www.dropbox.com/scl/fi/3oddseh9ylhldn3i9e97z/565-Bellas-Mansiones.mp3?rlkey=t97q746slkmohumg7bfv17h9x&st=icgigh5f&dl=1",
+    566: "https://www.dropbox.com/scl/fi/fn9prx14i1oz68npnu5lq/566-No-se-turbe-vuestro-coraz-n.mp3?rlkey=bdaxe78t5nttdanqdgt7dqy4c&st=yg7vfs1m&dl=1",
+    567: "https://www.dropbox.com/scl/fi/aym4c59h8acif9344aq41/567-En-la-Masi-n-do-Cristo-est.mp3?rlkey=4qj7y912f66ulrtar2tl2c5z8&st=d232wns8&dl=1",
+
+    570: "https://www.dropbox.com/scl/fi/z2zt76crzbe3aruype97h/570-Alabanzas-dad-a-Cristo.mp3?rlkey=vbykbyav29zn4f1tlkuvc789q&st=kcf976hl&dl=1",
+
+    572: "https://www.dropbox.com/scl/fi/2lzqesqu9x7kqvbnk1bso/572-Cristo-me-ama.mp3?rlkey=77zf75eyscysq4aj2gt4ga7w8&st=7327z9tz&dl=1",
+    573: "https://www.dropbox.com/scl/fi/i38l30y158pt7fx8vhkwd/573-Jes-s-me-ama.mp3?rlkey=teeo5azzuo99zhzrg3xm79aou&st=le9eg9oe&dl=1",
+    574: "https://www.dropbox.com/scl/fi/97u2y3pvsiysogj2j2llx/574-Cristo-me-ama-esto-s.mp3?rlkey=ss2oahg5soakvodyidwdliv71&st=7b59rugm&dl=1",
+    575: "https://www.dropbox.com/scl/fi/goo28b6d3fcm7ro0ngfof/575-Gozo-me-da-la-palabra-leer.mp3?rlkey=tqhpeok9ctzpw03q9jxzdh8vx&st=kjatsdk0&dl=1",
+    576: "https://www.dropbox.com/scl/fi/wyymvorqne34eu2j83eon/576-Dajad-a-los-ni-os-que-vengan.mp3?rlkey=gp8w8sb47d25i007yjeg949mr&st=li86l9td&dl=1",
+
+    578: "https://www.dropbox.com/scl/fi/zirx81qk3rppkzxnpi0pz/578-Acu-rdate.mp3?rlkey=j82mms1b6dhlcs0da1z4xhu0s&st=r9wj9va2&dl=1",
+    579: "https://www.dropbox.com/scl/fi/ecom0spwam47tde7r0q3d/579-Corazones-siempre-alegres.mp3?rlkey=t69uo4ax8x24660qsm0v5sgew&st=1m92opp4&dl=1",
+    580: "https://www.dropbox.com/scl/fi/4nvhm3ykguzbesddvd5xp/580-Quincea-era-Feliz.mp3?rlkey=regdfahnmeiqogoppgfbf8lwl&st=bx1yfw9v&dl=1",
+
+    582: "https://www.dropbox.com/scl/fi/i917xue2fvnssq6ttbbty/582-Proclamad-juventud-redimida.mp3?rlkey=28j5bjbwilr9z8an2d4ara2f1&st=pd5nuj6i&dl=1",
+    583: "https://www.dropbox.com/scl/fi/xxqdsq10u85qdqecj0x9k/583-Dios-m-o-eres-t.mp3?rlkey=coad1jmw2l4t3ojm7k2gv6uxr&st=8bqgtqpb&dl=1",
+
+    585: "https://www.dropbox.com/scl/fi/px39xfqxy5quacv76mftj/585-La-Reina-Ester.mp3?rlkey=xz2w3v4k634gey0w8ozr7bv95&st=0m1wxxjd&dl=1",
+
+    587: "https://www.dropbox.com/scl/fi/dclcw4xvdqy6fvba1k9tc/587-Henos-en-tus-huestes-Se-or.mp3?rlkey=9z0yy7vpwpm0hw191egw2mj0w&st=4rkb2aq8&dl=1",
+    588: "https://www.dropbox.com/scl/fi/4y8i6fodosp0aho0gzjr6/588-El-varon-prospero.mp3?rlkey=yazafsjo1dxwuxdowq9hir6qn&st=ch7x2axd&dl=1",
+    589: "https://www.dropbox.com/scl/fi/rhdgcp785marsc956ed0y/589-Dicha-grande-es-la-del-hombre.mp3?rlkey=oedcbajlw84skcf2y05k870w8&st=7den8l0s&dl=1",
+    590: "https://www.dropbox.com/scl/fi/ecuj0fwxq4d3hg2sbxbbw/590-Las-mujeres-cristianas.mp3?rlkey=in7aq0x5tgocv7qntww8dd86k&st=rd0urzda&dl=1",
+    591: "https://www.dropbox.com/scl/fi/geppcnxqqltq10pdrgoas/591-Rut-la-moabita.mp3?rlkey=hogdcdc24vlmqckzzcrhh3en7&st=1xj1k7na&dl=1",
+    592: "https://www.dropbox.com/scl/fi/nu911q9i3xo2xd0acnq2k/592-Perfecto-amor.mp3?rlkey=arugi5qzwlgxbx1kry8o8896y&st=435zzqcp&dl=1",
+    593: "https://www.dropbox.com/scl/fi/k2432yk508byfvfbf8108/593-Dios-bendiga-las-almas-unidas.mp3?rlkey=lsjc1fctjjfc7x4tux1fdaoiv&st=3t07i657&dl=1",
+    594: "https://www.dropbox.com/scl/fi/yw1pt5o8wh1659bj5vxwa/594-Oraci-n-de-matrimonio.mp3?rlkey=zh2atnrq6skm48kk6jbjxmltt&st=tyatnlkh&dl=1",
+
+    596: "https://www.dropbox.com/scl/fi/sgm10gou4m524ldutcfhz/596-La-familia-cristiana.mp3?rlkey=30jpnd4j59o9qzkobedxws97a&st=k6kndzh4&dl=1",
+    597: "https://www.dropbox.com/scl/fi/pzjhlek1ee2wwdzo5ymzh/597-Un-feliz-hogar.mp3?rlkey=uzfa1lr8qnx3namsv4l5vbvm6&st=frahgp2n&dl=1",
+    598: "https://www.dropbox.com/scl/fi/8sn8p4m9mnb66034s41mn/598-Cuando-las-bases.mp3?rlkey=yig8qpjjut8twnen4txoinlsj&st=dwmcy9k1&dl=1",
+    599: "https://www.dropbox.com/scl/fi/v6xyzz1ws06zfmx2xjt6c/599-Danos-un-bello-hogar.mp3?rlkey=hw8qned8k5sz9raptvx99n9hw&st=73ycv6pd&dl=1",
+    600: "https://www.dropbox.com/scl/fi/9ta15dhggjna5lzt5va93/600-Dios-el-creador-y-due-o.mp3?rlkey=u6ln79rdow9v876p1ua0kz1v3&st=gue7c612&dl=1",
+    601: "https://www.dropbox.com/scl/fi/ctuj66vxe6si45ygrawtw/601-Familia-Feliz.mp3?rlkey=y76nvhd7o2amygs6vwu0ojq65&st=2o7xd09u&dl=1",
+
+    603: "https://www.dropbox.com/scl/fi/32381cu3be03qebtg6yri/603-Honor-a-las-madres.mp3?rlkey=c3ydaok8b4clp0niboyhzwpef&st=abz1k6x8&dl=1",
+    604: "https://www.dropbox.com/scl/fi/6xj9afsvxe2rsc8b8d7xh/604-Honos-a-los-padres.mp3?rlkey=4822f70d1dniivi0cq61ogc1k&st=but5opw6&dl=1",
+    605: "https://www.dropbox.com/scl/fi/i2x2403j1d36glwadcrai/605-Bienaventurada.mp3?rlkey=t4kzssfj5726nfdwt5306jtto&st=1i0vj4dj&dl=1",
+    606: "https://www.dropbox.com/scl/fi/tmzl1rim0nble42lrjgcv/606-Tu-honraste-a-las-madres.mp3?rlkey=cm9if1v0vrdj7d1gbieww9ith&st=x4dyoy8v&dl=1",
+    607: "https://www.dropbox.com/scl/fi/pm8dizg07k2tu2b55iiq1/607-A-mi-madre.mp3?rlkey=q8q7vltnldmxpqh0h07o5zcrl&st=kjs60hwm&dl=1",
+    608: "https://www.dropbox.com/scl/fi/vvla7cb9ocgv8ajq8mt8f/608-Un-a-o-m-s.mp3?rlkey=b93m33vhd6ivs6o014gcv2gyt&st=4r7ms2cr&dl=1",
+    609: "https://www.dropbox.com/scl/fi/qn0dkl13j7a0n7slvrlx9/609-Dad-a-Dios-inmortal-alabanza.mp3?rlkey=26gm0852129aufm7cru8npsqn&st=1ol3ac8x&dl=1",
+    610: "https://www.dropbox.com/scl/fi/vlr0uegx11102d1i4oerl/610-Principia-un-a-o-nuevo.mp3?rlkey=qir01wq61z3b83xwiezmhp7an&st=b62qeazi&dl=1",
+    611: "https://www.dropbox.com/scl/fi/1b360f6y63mfwfdj5m82j/611-Con-alegres-corazones.mp3?rlkey=n9tstw2xwzb6yt6i0ubd36irn&st=u2bu9jo8&dl=1",
+    612: "https://www.dropbox.com/scl/fi/9swi4p2d82aqsoux2shdl/612-Feliz-feliz-cumplea-os.mp3?rlkey=3e296966pfe5s8vq4tkpwh8ze&st=vc4cgr5f&dl=1",
+    613: "https://www.dropbox.com/scl/fi/nik6djmg6k7w67p28h22s/613-Nuestra-Patria.mp3?rlkey=her7qkk7d9n483oy25w8p1hzw&st=2ekstaus&dl=1",
+    614: "https://www.dropbox.com/scl/fi/dcbh4cy16i9xfjuwny2ay/614-Am-rica-ser-para-Cristo.mp3?rlkey=vb1ph74m7hb5bv1h704zzk2md&st=vwoyw7vz&dl=1",
+    615: "https://www.dropbox.com/scl/fi/u12up93o9fqeejkj16umk/615-Oraci-n-por-la-patria.mp3?rlkey=4kgso47i4qhb74oivyqlz24n8&st=dp83c4si&dl=1",
+    616: "https://www.dropbox.com/scl/fi/tydaxzpa1qdfvc0v4ggvv/616-A-Dios-naciones-dad-loor.mp3?rlkey=q02wmvtaxxwnul3fz4atcy0xr&st=iqgwqhdx&dl=1",
+    617: "https://www.dropbox.com/scl/fi/4qvyfv5zljiwxs0cuativ/617-Supremo-Dios.mp3?rlkey=4a2oh7zp89ggw6rn43yo98y9m&st=lfrslmwh&dl=1",
+
+    619: "https://www.dropbox.com/scl/fi/c0g0ta7572hpxpl4kdyid/619-Alabad-a-Jehov.mp3?rlkey=t83am08nnjfpcbu6uchai4csa&st=cx7tjpp1&dl=1",
+    620: "https://www.dropbox.com/scl/fi/7og08m14q1ftjz2d2rtrl/620-Dios-os-guarde.mp3?rlkey=s3lucums5oxlmf2i6m9nqyuml&st=cxqbxni4&dl=1",
+    621: "https://www.dropbox.com/scl/fi/3dg5vnjz1sl25v1xy6osu/621-Gracias-Dios.mp3?rlkey=mzl1c73vihfwk02jskbo14bp6&st=ee540od0&dl=1",
+    622: "https://www.dropbox.com/scl/fi/elwp3uyfmkytesfduf65v/622-Gratitud-por-el-pastor.mp3?rlkey=88jsjs3s91x5ymnhm4rsmr89i&st=83gkh65t&dl=1",
+    623: "https://www.dropbox.com/scl/fi/shhz177gp0wys2vrwncxf/623-Este-templo-dedicamos.mp3?rlkey=o8acd3zq77z59hl5yhwqs69ce&st=gnokzms9&dl=1",
+    624: "https://www.dropbox.com/scl/fi/8ohoodztu7jfmr53ouy0x/624-A-Dios-el-padre.mp3?rlkey=sku465k6lm7haphjs63g61foi&st=rfrka2kc&dl=1",
+    625: "https://www.dropbox.com/scl/fi/wutodes56s86a7m48qppc/625-Celebremos-el-amor-de-Dios.mp3?rlkey=v1ds3vs4hkiafy2gosud2hh08&st=oluj2e81&dl=1",
+    626: "https://www.dropbox.com/scl/fi/vp3blukf02q8euinah646/626-Gloria-damos-al-Padre.mp3?rlkey=uakbzt8o39vq7q0os8anr4ioa&st=y63f7rdu&dl=1",
+
+    628: "https://www.dropbox.com/scl/fi/ot56ht711qiwuzd1tipzu/628-Para-siempre-es.mp3?rlkey=jde5deusovixjonreytyj1ycs&st=l5j71inj&dl=1",
+    629: "https://www.dropbox.com/scl/fi/wm09x4gw0q92cqkvsf5rq/629-Eterno-Rey.mp3?rlkey=pu7ho2ptggrqubitz87p8p2oi&st=j26t8gl9&dl=1",
+    630: "https://www.dropbox.com/scl/fi/8bk2tenwm81si7mh2grm7/630-Tu-pueblo-calla-ante-t-Se-or.mp3?rlkey=ol7108ant4kn4vb0o8ujbzydb&st=1dxkpbws&dl=1",
+
+    632: "https://www.dropbox.com/scl/fi/opelwt2w0r1ozzcmp8xm7/632-Engrandecido-sea-Dios.mp3?rlkey=lu1zybudbao23yc0xuxkwk35u&st=bvwouhvb&dl=1",
+    633: "https://www.dropbox.com/scl/fi/uq46lhxnqmxex6ql2pf5d/633-Ven-te-invito.mp3?rlkey=0lzdqqo3yqyyhwrwiaop33b8i&st=pv9scpdz&dl=1",
+    634: "https://www.dropbox.com/scl/fi/6snnkcepsa1da1z2h0fud/634-Cantad-alegres-cantad-a-Dios.mp3?rlkey=kavw35807cu9x3mn2f91qx62t&st=w5xljujd&dl=1",
+    635: "https://www.dropbox.com/scl/fi/ag9xbv18nqybtd8i2scnv/635-Bienvenido.mp3?rlkey=mnxlt6b92jnfrwfrlz8b5wcls&st=cditx4le&dl=1",
+    636: "https://www.dropbox.com/scl/fi/434wbyjtvwaboks63pgba/636-Hola-Como-estas.mp3?rlkey=7mv7tjqn2lazy4bwzdndbz9uo&st=sq714yq1&dl=1",
+    637: "https://www.dropbox.com/scl/fi/n83e2f6pki06qqlzwcp3q/637-En-la-escuela-dominical.mp3?rlkey=6ozgo0lussceqw2in6jpbcj1o&st=3raviok3&dl=1",
+    638: "https://www.dropbox.com/scl/fi/9o9yyxop1mtm5uh1in0d7/638-Por-siempre-am-n.mp3?rlkey=191j45fwntn4ta1as9t1ujcgw&st=fs6tuf1i&dl=1",
+    639: "https://www.dropbox.com/scl/fi/eojq1uep6h7tvithzpspk/639-Tu-pueblo-jubiloso.mp3?rlkey=voh50q4jfhf1zzhg5pzjsdzhp&st=sj8k9fq0&dl=1",
+    640: "https://www.dropbox.com/scl/fi/vggruxm6pab0kukpi6zny/640-Oh-Padre-en-los-cielos.mp3?rlkey=nmkkjfpdwnu3pfsub1evx5ane&st=hwjrcj6a&dl=1",
+
+    645: "https://www.dropbox.com/scl/fi/xdxmfuachyjta6k0jyasd/645-Sagrado-es-el-amor.mp3?rlkey=6klbi2jhh9qo71ktlsk9ynhij&st=islind8u&dl=1",
+    646: "https://www.dropbox.com/scl/fi/p5chbnh9m0ubu0vs2offl/646-Despu-s-de-haber-tenido-aqu.mp3?rlkey=xaxi6smcufx9qrfbm2uj05kme&st=92j1mgj9&dl=1",
+    647: "https://www.dropbox.com/scl/fi/tc1kn8fendeothc3uajr5/647-El-Se-or-te-bendiga.mp3?rlkey=49918z76fdqidfss895h5eiir&st=vhrl1cge&dl=1",
+    648: "https://www.dropbox.com/scl/fi/imusmie4e90my17umpnrs/648-Am-n-s-ptuplo.mp3?rlkey=dsi0rdi5e9ugrydbnf9e3p4v5&st=oaa6e19i&dl=1",
+    649: "https://www.dropbox.com/scl/fi/3z593ultrpq83i1vpoydn/649-Am-n-triple.mp3?rlkey=f01tvxoc85k2qrzr2xphxu6q0&st=o18uu1f6&dl=1",
+    650: "https://www.dropbox.com/scl/fi/cjtc4u9r4kv647sls75cg/650-Am-n-Duplo.mp3?rlkey=ggc5rgg0d6y78radw9uzbb3lv&st=4882pan8&dl=1",
+    651: "https://www.dropbox.com/scl/fi/2htmdrw3xb3469gtcp7h8/651-Amen-Quintuplo.mp3?rlkey=0tyud54j4gxo3n4ekvey1xxt6&st=268oecwj&dl=1",
+    652: "https://www.dropbox.com/scl/fi/hnfo4f6au846gn5sqsv1z/652-Al-que-est-sentado.mp3?rlkey=e8a7jl67pzo44b9qowe7uil9l&st=eim4h7q4&dl=1"
 };
 
 let num = "";
@@ -1049,6 +1298,7 @@ function buscar(){
         document.getElementById("himno").style.display = "block";
         document.getElementById("zoomControls").style.display = "flex";
         document.getElementById("temaBtn").style.display = "none";
+        document.getElementById("installArea").style.display = "none";
 
         // Inicializar Audio si existe enlace
         const playerContainer = document.getElementById("playerContainer");
@@ -1080,6 +1330,7 @@ function volver(){
     document.getElementById("himno").style.display = "none";
     document.getElementById("zoomControls").style.display = "none";
     document.getElementById("temaBtn").style.display = "block";
+    actualizarEstadoInstalacion();
     clearDisplay();
 }
 
