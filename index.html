@@ -431,6 +431,182 @@ body {
     opacity: 1;
     transform: translate(-50%, 0);
 }
+
+/* ========== BUSCADOR POR NOMBRE ========== */
+.search-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: min(520px, calc(100% - 24px));
+    margin: 2px auto 14px;
+}
+
+.search-option-btn {
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid rgba(212,175,55,.5);
+    border-radius: 13px;
+    background: rgba(255,255,255,.09);
+    color: #fff;
+    font-family: "Georgia", serif;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,.22);
+    transition: transform .15s ease, background .2s ease;
+}
+
+.search-option-btn.active,
+.search-option-btn:hover {
+    background: linear-gradient(145deg, #d4af37, #9b7207);
+}
+
+.search-option-btn:active { transform: scale(.97); }
+
+.hymn-search-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 5200;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    background: rgba(0,0,0,.78);
+    backdrop-filter: blur(5px);
+}
+
+.hymn-search-modal.visible { display: flex; }
+
+.hymn-search-card {
+    display: flex;
+    flex-direction: column;
+    width: min(620px, 100%);
+    max-height: 92vh;
+    overflow: hidden;
+    border: 1px solid rgba(212,175,55,.65);
+    border-radius: 19px;
+    background: linear-gradient(155deg, #173746, #0b1d26);
+    box-shadow: 0 20px 55px rgba(0,0,0,.6);
+}
+
+.hymn-search-header {
+    position: relative;
+    padding: 20px 54px 12px 20px;
+}
+
+.hymn-search-header h2 {
+    color: #f1cc55;
+    font-size: 22px;
+    line-height: 1.25;
+}
+
+.hymn-search-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 50%;
+    background: rgba(255,255,255,.1);
+    color: white;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.hymn-search-tools { padding: 0 16px 12px; }
+
+.hymn-search-input {
+    width: 100%;
+    height: 50px;
+    padding: 0 15px;
+    border: 2px solid rgba(212,175,55,.7);
+    border-radius: 13px;
+    outline: none;
+    background: #fff;
+    color: #17232a;
+    font-family: Arial, sans-serif;
+    font-size: 17px;
+}
+
+.hymn-search-input:focus {
+    border-color: #ffd95b;
+    box-shadow: 0 0 0 3px rgba(212,175,55,.2);
+}
+
+.hymn-search-count {
+    margin-top: 8px;
+    color: #d6e2e8;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+
+.hymn-list {
+    flex: 1;
+    min-height: 170px;
+    max-height: 62vh;
+    overflow-y: auto;
+    padding: 0 12px 16px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hymn-list-item {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    margin: 7px 0;
+    padding: 10px 12px 10px 8px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 12px;
+    background: rgba(255,255,255,.075);
+    color: white;
+    text-align: left;
+    cursor: pointer;
+}
+
+.hymn-list-item:hover,
+.hymn-list-item:focus-visible {
+    background: rgba(212,175,55,.2);
+    border-color: rgba(212,175,55,.7);
+    outline: none;
+}
+
+.hymn-number-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #d4af37, #9b7207);
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.hymn-list-title {
+    font-family: "Georgia", serif;
+    font-size: 16px;
+    line-height: 1.28;
+}
+
+.hymn-no-results {
+    padding: 32px 15px;
+    color: #d6e2e8;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    text-align: center;
+}
+
+@media (max-width: 390px) {
+    .search-option-btn { font-size: 14px; padding-inline: 7px; }
+    .hymn-search-modal { padding: 8px; }
+    .hymn-search-card { max-height: 95vh; }
+}
 </style>
 <base target="_blank">
 
@@ -459,6 +635,11 @@ body {
 <div class="container">
 
     <button class="tema-btn" id="temaBtn" onclick="cambiarTema()">🌙 Modo Oscuro</button>
+
+    <div class="search-options" id="searchOptions" aria-label="Forma de buscar himnos">
+        <button class="search-option-btn active" id="numberSearchBtn" type="button" onclick="activarBusquedaNumero()">🔢 Buscar por número</button>
+        <button class="search-option-btn" id="nameSearchBtn" type="button" onclick="abrirBusquedaNombre()">🔎 Buscar por nombre</button>
+    </div>
 
     <div class="display" id="display">Ingrese número</div>
 
@@ -501,6 +682,20 @@ body {
 </div>
 
 <div class="install-toast" id="installToast" role="status" aria-live="polite"></div>
+
+<div class="hymn-search-modal" id="hymnSearchModal" role="dialog" aria-modal="true" aria-labelledby="hymnSearchTitle" onclick="cerrarBusquedaNombre(event)">
+    <div class="hymn-search-card">
+        <div class="hymn-search-header">
+            <h2 id="hymnSearchTitle">Buscar himno por nombre</h2>
+            <button class="hymn-search-close" type="button" onclick="cerrarBusquedaNombre()" aria-label="Cerrar búsqueda">×</button>
+        </div>
+        <div class="hymn-search-tools">
+            <input class="hymn-search-input" id="hymnSearchInput" type="search" inputmode="search" autocomplete="off" placeholder="Escriba el título del himno…" oninput="filtrarListaHimnos()">
+            <div class="hymn-search-count" id="hymnSearchCount" aria-live="polite"></div>
+        </div>
+        <div class="hymn-list" id="hymnList"></div>
+    </div>
+</div>
 
 <script>
 
@@ -617,6 +812,144 @@ if ('serviceWorker' in navigator) {
 
 window.addEventListener('DOMContentLoaded', actualizarEstadoInstalacion);
 window.matchMedia('(display-mode: standalone)').addEventListener?.('change', actualizarEstadoInstalacion);
+
+// ========== BÚSQUEDA POR NOMBRE Y LISTA COMPLETA ==========
+let indiceHimnos = null;
+
+function normalizarBusqueda(texto) {
+    return String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function obtenerTituloHimno(numero) {
+    const plantilla = document.createElement('template');
+    plantilla.innerHTML = himnos[numero];
+    const tituloNegrita = plantilla.content.querySelector('.titulo b, .titulo strong');
+    if (tituloNegrita && tituloNegrita.textContent.trim()) {
+        return tituloNegrita.textContent.trim();
+    }
+
+    const tituloGeneral = plantilla.content.querySelector('.titulo');
+    if (tituloGeneral) {
+        const copia = tituloGeneral.cloneNode(true);
+        copia.querySelectorAll('.numero').forEach(elemento => elemento.remove());
+        const texto = copia.textContent.trim();
+        if (texto) return texto;
+    }
+
+    return 'Himno ' + numero;
+}
+
+function prepararIndiceHimnos() {
+    if (indiceHimnos) return;
+    indiceHimnos = Object.keys(himnos)
+        .map(Number)
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b)
+        .map(numero => {
+            const titulo = obtenerTituloHimno(numero);
+            return {
+                numero,
+                titulo,
+                busqueda: normalizarBusqueda(numero + ' ' + titulo)
+            };
+        });
+}
+
+function activarBusquedaNumero() {
+    document.getElementById('numberSearchBtn').classList.add('active');
+    document.getElementById('nameSearchBtn').classList.remove('active');
+    if (document.getElementById('hymnSearchModal').classList.contains('visible')) {
+        cerrarBusquedaNombre();
+    }
+}
+
+function abrirBusquedaNombre() {
+    prepararIndiceHimnos();
+    document.getElementById('numberSearchBtn').classList.remove('active');
+    document.getElementById('nameSearchBtn').classList.add('active');
+    const entrada = document.getElementById('hymnSearchInput');
+    entrada.value = '';
+    renderizarListaHimnos(indiceHimnos);
+    document.getElementById('hymnSearchModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => entrada.focus({ preventScroll: true }));
+}
+
+function cerrarBusquedaNombre(event) {
+    const modal = document.getElementById('hymnSearchModal');
+    if (event && event.target !== modal) return;
+    modal.classList.remove('visible');
+    document.body.style.overflow = '';
+    document.getElementById('nameSearchBtn').classList.remove('active');
+    document.getElementById('numberSearchBtn').classList.add('active');
+}
+
+function filtrarListaHimnos() {
+    prepararIndiceHimnos();
+    const consulta = normalizarBusqueda(document.getElementById('hymnSearchInput').value);
+    const palabras = consulta.split(/\s+/).filter(Boolean);
+    const resultados = palabras.length === 0
+        ? indiceHimnos
+        : indiceHimnos.filter(himno => palabras.every(palabra => himno.busqueda.includes(palabra)));
+    renderizarListaHimnos(resultados);
+}
+
+function renderizarListaHimnos(resultados) {
+    const lista = document.getElementById('hymnList');
+    lista.replaceChildren();
+    document.getElementById('hymnSearchCount').textContent =
+        resultados.length + (resultados.length === 1 ? ' himno encontrado' : ' himnos encontrados');
+
+    if (resultados.length === 0) {
+        const vacio = document.createElement('div');
+        vacio.className = 'hymn-no-results';
+        vacio.textContent = 'No se encontró ningún himno con ese título.';
+        lista.appendChild(vacio);
+        return;
+    }
+
+    const fragmento = document.createDocumentFragment();
+    resultados.forEach(himno => {
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'hymn-list-item';
+        boton.setAttribute('aria-label', 'Abrir himno ' + himno.numero + ': ' + himno.titulo);
+        boton.addEventListener('click', () => seleccionarHimnoPorNombre(himno.numero));
+
+        const numero = document.createElement('span');
+        numero.className = 'hymn-number-badge';
+        numero.textContent = himno.numero;
+
+        const titulo = document.createElement('span');
+        titulo.className = 'hymn-list-title';
+        titulo.textContent = himno.titulo;
+
+        boton.append(numero, titulo);
+        fragmento.appendChild(boton);
+    });
+    lista.appendChild(fragmento);
+    lista.scrollTop = 0;
+}
+
+function seleccionarHimnoPorNombre(numeroHimno) {
+    num = String(numeroHimno);
+    cerrarBusquedaNombre();
+    buscar();
+}
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        if (document.getElementById('hymnSearchModal').classList.contains('visible')) {
+            cerrarBusquedaNombre();
+        } else if (document.getElementById('installModal').classList.contains('visible')) {
+            cerrarGuiaInstalacion();
+        }
+    }
+});
 
 // ========== ENLACES DE AUDIO ==========
 // Aquí pones el link .mp3 de cada himno.
@@ -1299,6 +1632,7 @@ function buscar(){
         document.getElementById("zoomControls").style.display = "flex";
         document.getElementById("temaBtn").style.display = "none";
         document.getElementById("installArea").style.display = "none";
+        document.getElementById("searchOptions").style.display = "none";
 
         // Inicializar Audio si existe enlace
         const playerContainer = document.getElementById("playerContainer");
@@ -1330,6 +1664,7 @@ function volver(){
     document.getElementById("himno").style.display = "none";
     document.getElementById("zoomControls").style.display = "none";
     document.getElementById("temaBtn").style.display = "block";
+    document.getElementById("searchOptions").style.display = "grid";
     actualizarEstadoInstalacion();
     clearDisplay();
 }
@@ -1356,9 +1691,17 @@ audio.addEventListener('ended', () => {
 
 // ========== BOTÓN ATRÁS DEL CELULAR ==========
 window.addEventListener("popstate", function(e) {
+    const buscadorVisible = document.getElementById("hymnSearchModal").classList.contains("visible");
+    const instalacionVisible = document.getElementById("installModal").classList.contains("visible");
     const himnoVisible = document.getElementById("himno").style.display === "block";
 
-    if(himnoVisible){
+    if(buscadorVisible){
+        cerrarBusquedaNombre();
+        history.pushState(null, null, window.location.href);
+    } else if(instalacionVisible){
+        cerrarGuiaInstalacion();
+        history.pushState(null, null, window.location.href);
+    } else if(himnoVisible){
         volver();
         history.pushState(null, null, window.location.href);
     } else {
