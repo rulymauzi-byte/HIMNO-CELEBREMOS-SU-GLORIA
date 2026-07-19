@@ -432,36 +432,30 @@ body {
     transform: translate(-50%, 0);
 }
 
-/* ========== BUSCADOR POR NOMBRE ========== */
-.search-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+/* ========== BOTÓN Y BUSCADOR DE HIMNOS ========== */
+.hymn-search-launch {
+    display: block;
     width: min(520px, calc(100% - 24px));
     margin: 2px auto 14px;
-}
-
-.search-option-btn {
     min-height: 46px;
     padding: 10px 12px;
     border: 1px solid rgba(212,175,55,.5);
     border-radius: 13px;
-    background: rgba(255,255,255,.09);
+    background: linear-gradient(145deg, #d4af37, #9b7207);
     color: #fff;
     font-family: "Georgia", serif;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 3px 10px rgba(0,0,0,.22);
     transition: transform .15s ease, background .2s ease;
 }
 
-.search-option-btn.active,
-.search-option-btn:hover {
-    background: linear-gradient(145deg, #d4af37, #9b7207);
+.hymn-search-launch:hover {
+    background: linear-gradient(145deg, #e1c252, #b48712);
 }
 
-.search-option-btn:active { transform: scale(.97); }
+.hymn-search-launch:active { transform: scale(.97); }
 
 .hymn-search-modal {
     display: none;
@@ -603,7 +597,7 @@ body {
 }
 
 @media (max-width: 390px) {
-    .search-option-btn { font-size: 14px; padding-inline: 7px; }
+    .hymn-search-launch { font-size: 15px; }
     .hymn-search-modal { padding: 8px; }
     .hymn-search-card { max-height: 95vh; }
 }
@@ -636,10 +630,7 @@ body {
 
     <button class="tema-btn" id="temaBtn" onclick="cambiarTema()">🌙 Modo Oscuro</button>
 
-    <div class="search-options" id="searchOptions" aria-label="Forma de buscar himnos">
-        <button class="search-option-btn active" id="numberSearchBtn" type="button" onclick="activarBusquedaNumero()">🔢 Buscar por número</button>
-        <button class="search-option-btn" id="nameSearchBtn" type="button" onclick="abrirBusquedaNombre()">🔎 Buscar por nombre</button>
-    </div>
+    <button class="hymn-search-launch" id="hymnSearchLaunch" type="button" onclick="abrirBusquedaNombre()">🔎 Buscar himnos por nombre</button>
 
     <div class="display" id="display">Ingrese número</div>
 
@@ -730,10 +721,13 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
     eventoInstalacion = null;
     actualizarEstadoInstalacion();
+    asegurarAlmacenamientoOffline();
     mostrarAviso('Celebremos SG Mauzi se instaló correctamente.');
 });
 
 async function instalarApp() {
+    asegurarAlmacenamientoOffline();
+
     if (estaInstalada()) {
         mostrarAviso('La aplicación ya está instalada.');
         actualizarEstadoInstalacion();
@@ -793,6 +787,16 @@ function cerrarGuiaInstalacion(event) {
     document.body.style.overflow = '';
 }
 
+async function asegurarAlmacenamientoOffline() {
+    try {
+        if (navigator.storage && navigator.storage.persist) {
+            await navigator.storage.persist();
+        }
+    } catch (error) {
+        console.warn('El navegador administrará el almacenamiento offline.');
+    }
+}
+
 let temporizadorAviso;
 function mostrarAviso(mensaje) {
     const aviso = document.getElementById('installToast');
@@ -803,14 +807,23 @@ function mostrarAviso(mensaje) {
 }
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js').catch(() => {
+    window.addEventListener('load', async () => {
+        try {
+            const registro = await navigator.serviceWorker.register('./service-worker.js', {
+                updateViaCache: 'none'
+            });
+            registro.update().catch(() => {});
+            window.addEventListener('online', () => registro.update().catch(() => {}));
+        } catch (error) {
             console.warn('No se pudo registrar el modo instalable.');
-        });
+        }
     });
 }
 
-window.addEventListener('DOMContentLoaded', actualizarEstadoInstalacion);
+window.addEventListener('DOMContentLoaded', () => {
+    actualizarEstadoInstalacion();
+    asegurarAlmacenamientoOffline();
+});
 window.matchMedia('(display-mode: standalone)').addEventListener?.('change', actualizarEstadoInstalacion);
 
 // ========== BÚSQUEDA POR NOMBRE Y LISTA COMPLETA ==========
@@ -859,18 +872,8 @@ function prepararIndiceHimnos() {
         });
 }
 
-function activarBusquedaNumero() {
-    document.getElementById('numberSearchBtn').classList.add('active');
-    document.getElementById('nameSearchBtn').classList.remove('active');
-    if (document.getElementById('hymnSearchModal').classList.contains('visible')) {
-        cerrarBusquedaNombre();
-    }
-}
-
 function abrirBusquedaNombre() {
     prepararIndiceHimnos();
-    document.getElementById('numberSearchBtn').classList.remove('active');
-    document.getElementById('nameSearchBtn').classList.add('active');
     const entrada = document.getElementById('hymnSearchInput');
     entrada.value = '';
     renderizarListaHimnos(indiceHimnos);
@@ -884,8 +887,6 @@ function cerrarBusquedaNombre(event) {
     if (event && event.target !== modal) return;
     modal.classList.remove('visible');
     document.body.style.overflow = '';
-    document.getElementById('nameSearchBtn').classList.remove('active');
-    document.getElementById('numberSearchBtn').classList.add('active');
 }
 
 function filtrarListaHimnos() {
@@ -1632,7 +1633,7 @@ function buscar(){
         document.getElementById("zoomControls").style.display = "flex";
         document.getElementById("temaBtn").style.display = "none";
         document.getElementById("installArea").style.display = "none";
-        document.getElementById("searchOptions").style.display = "none";
+        document.getElementById("hymnSearchLaunch").style.display = "none";
 
         // Inicializar Audio si existe enlace
         const playerContainer = document.getElementById("playerContainer");
@@ -1664,7 +1665,7 @@ function volver(){
     document.getElementById("himno").style.display = "none";
     document.getElementById("zoomControls").style.display = "none";
     document.getElementById("temaBtn").style.display = "block";
-    document.getElementById("searchOptions").style.display = "grid";
+    document.getElementById("hymnSearchLaunch").style.display = "block";
     actualizarEstadoInstalacion();
     clearDisplay();
 }
