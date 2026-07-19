@@ -1,4 +1,4 @@
-const CACHE_NAME = 'celebremos-sg-mauzi-v3';
+const CACHE_NAME = 'celebremos-sg-mauzi-v4';
 const APP_FILES = [
   './',
   './index.html',
@@ -11,7 +11,11 @@ const APP_FILES = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_FILES))
+      .then(cache => Promise.all(APP_FILES.map(async archivo => {
+        const response = await fetch(archivo, { cache: 'reload' });
+        if (!response.ok) throw new Error('No se pudo guardar ' + archivo);
+        await cache.put(archivo, response);
+      })))
       .then(() => self.skipWaiting())
   );
 });
@@ -35,10 +39,12 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then(response => {
-          const copia = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copia));
+          if (response.ok) {
+            const copia = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copia));
+          }
           return response;
         })
         .catch(() => caches.match(request).then(response => response || caches.match('./index.html')))
@@ -47,6 +53,14 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(request).then(response => response || fetch(request))
+    fetch(request, { cache: 'no-store' })
+      .then(response => {
+        if (response.ok) {
+          const copia = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copia));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
