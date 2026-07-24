@@ -1,4 +1,4 @@
-const CACHE_NAME = 'celebremos-sg-mauzi-v4';
+const CACHE_NAME = 'celebremos-sg-mauzi-v6';
 const APP_SHELL = [
   './',
   './index.html',
