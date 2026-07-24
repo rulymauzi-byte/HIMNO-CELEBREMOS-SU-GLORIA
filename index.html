@@ -476,7 +476,7 @@ body {
     max-width: 780px;
     margin: 0 auto 7px;
     padding: 0 10px;
-    color: #444;
+    color: #3d78ad;
     font-size: 13px;
     font-style: italic;
     font-weight: 400;
@@ -590,7 +590,10 @@ body {
 
 .himno.tema-oscuro .versiculo,
 .himno.tema-oscuro .referencia,
-.himno.tema-oscuro .cita,
+.himno.tema-oscuro .cita {
+    color: #5aaeff;
+}
+
 .himno.tema-oscuro .notas,
 .himno.tema-oscuro .autor,
 .himno.tema-oscuro .nota-autor,
@@ -1749,12 +1752,55 @@ function buscar() {
     if (num) mostrarHimno(num);
 }
 
+function separarEstrofasNumeradas(contenedor) {
+    var bloques = contenedor.querySelectorAll(".estrofa");
+
+    Array.prototype.forEach.call(bloques, function(bloque) {
+        var lineas = bloque.innerHTML.split(/<br\s*\/?>/i);
+        var grupos = [];
+        var grupoActual = [];
+        var ultimoNumero = 0;
+
+        lineas.forEach(function(linea) {
+            var lector = document.createElement("div");
+            lector.innerHTML = linea;
+            var texto = lector.textContent.replace(/\s+/g, " ").trim();
+            var coincidencia = texto.match(/^(\d{1,2})[\.\)]?\s+/);
+            var numeroEstrofa = coincidencia ? parseInt(coincidencia[1], 10) : 0;
+            var iniciaEstrofa = numeroEstrofa > 0 &&
+                numeroEstrofa <= 12 &&
+                (ultimoNumero === 0 || numeroEstrofa === ultimoNumero + 1);
+
+            if (iniciaEstrofa && grupoActual.length) {
+                grupos.push(grupoActual);
+                grupoActual = [];
+            }
+
+            if (iniciaEstrofa) ultimoNumero = numeroEstrofa;
+            grupoActual.push(linea);
+        });
+
+        if (grupoActual.length) grupos.push(grupoActual);
+        if (grupos.length < 2) return;
+
+        grupos.forEach(function(grupo) {
+            var nuevaEstrofa = document.createElement("div");
+            nuevaEstrofa.className = bloque.className;
+            nuevaEstrofa.innerHTML = grupo.join("<br>");
+            bloque.parentNode.insertBefore(nuevaEstrofa, bloque);
+        });
+        bloque.parentNode.removeChild(bloque);
+    });
+}
+
 function mostrarHimno(numero) {
     const clave = String(numero);
     if (!himnos[clave]) return;
 
     num = clave;
-    document.getElementById("himno").innerHTML = himnos[clave];
+    var contenedorHimno = document.getElementById("himno");
+    contenedorHimno.innerHTML = himnos[clave];
+    separarEstrofasNumeradas(contenedorHimno);
     document.getElementById("modoBusqueda").style.display = "none";
     document.getElementById("keypad").style.display = "none";
     document.getElementById("display").style.display = "none";
@@ -2433,7 +2479,9 @@ que están en los cielos y en la tierra.<br>
 Tuyo es el reino, oh Señor,<br>
 y tú te enalteces como cabeza sobre todo.<br>
 Y ahora, oh Dios nuestro, nosotros te damos gracias<br>
-y alabamos tu glorioso nombre.<br>
+y alabamos tu glorioso nombre.
+</div>
+<div class="estrofa">
 Señor nuestro, ¡cuán grande es tu nombre en toda la tierra!<br>
 Has puesto tu gloria sobre los cielos.<br>
 De la boca de los pequeños<br>
@@ -2443,11 +2491,15 @@ para hacer callar al enemigo y al vengativo.<br>
 Cuando contemplo tus cielos, obra de tus dedos,<br>
 la luna y las estrellas que tú has formado,<br>
 Digo: ¿Qué es el hombre, para que de él te acuerdes;<br>
-y el hijo de hombre, para que lo visites?<br>
+y el hijo de hombre, para que lo visites?
+</div>
+<div class="estrofa">
 Celebrarán los cielos tus maravillas, oh Señor, tu verdad<br>
 también en la congregación de los santos.<br>
 Dios temible en la gran congregación de los santos,<br>
-Y formidable sobre todos cuantos están alrededor de él.<br>
+Y formidable sobre todos cuantos están alrededor de él.
+</div>
+<div class="estrofa">
 Te alabaré entre los pueblos, oh Señor;<br>
 cantaré de ti entre las naciones.<br>
 Porque grande es hasta los cielos tu misericordia,<br>
