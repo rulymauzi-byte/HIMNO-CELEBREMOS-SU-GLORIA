@@ -1,5 +1,5 @@
 const CACHE_NAME = 'celebremos-sg-mauzi-v4';
-const APP_FILES = [
+const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
@@ -8,29 +8,31 @@ const APP_FILES = [
   './apple-touch-icon.png'
 ];
 
-self.addEventListener('install', event => {
+self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.all(APP_FILES.map(async archivo => {
-        const response = await fetch(archivo, { cache: 'reload' });
-        if (!response.ok) throw new Error('No se pudo guardar ' + archivo);
-        await cache.put(archivo, response);
-      })))
-      .then(() => self.skipWaiting())
+      .then(function(cache) {
+        return Promise.all(APP_SHELL.map(function(url) {
+          return cache.add(url).catch(function() { return null; });
+        }));
+      })
+      .then(function() { return self.skipWaiting(); })
   );
 });
 
-self.addEventListener('activate', event => {
+self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
+      .then(function(keys) {
+        return Promise.all(keys.map(function(key) {
+          return key === CACHE_NAME ? null : caches.delete(key);
+        }));
+      })
+      .then(function() { return self.clients.claim(); })
   );
 });
 
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', function(event) {
   const request = event.request;
   if (request.method !== 'GET') return;
 
@@ -39,28 +41,40 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' })
-        .then(response => {
-          if (response.ok) {
-            const copia = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, copia));
+      fetch(request)
+        .then(function(response) {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put('./index.html', copy);
+            });
           }
           return response;
         })
-        .catch(() => caches.match(request).then(response => response || caches.match('./index.html')))
+        .catch(function() {
+          return caches.match('./index.html', { ignoreSearch: true })
+            .then(function(response) {
+              return response || caches.match('./', { ignoreSearch: true });
+            });
+        })
     );
     return;
   }
 
   event.respondWith(
-    fetch(request, { cache: 'no-store' })
-      .then(response => {
-        if (response.ok) {
-          const copia = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copia));
-        }
-        return response;
+    caches.match(request, { ignoreSearch: true })
+      .then(function(cached) {
+        if (cached) return cached;
+
+        return fetch(request).then(function(response) {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(request, copy);
+            });
+          }
+          return response;
+        });
       })
-      .catch(() => caches.match(request))
   );
 });
