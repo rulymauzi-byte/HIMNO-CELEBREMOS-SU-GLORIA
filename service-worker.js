@@ -1,4 +1,4 @@
-const CACHE_NAME = 'celebremos-sg-mauzi-v7';
+const CACHE_NAME = 'himnarios-mauzi-v2-logo-mauzi';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,11 +11,7 @@ const APP_SHELL = [
 self.addEventListener('install', function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(function(cache) {
-        return Promise.all(APP_SHELL.map(function(url) {
-          return cache.add(url).catch(function() { return null; });
-        }));
-      })
+      .then(function(cache) { return cache.addAll(APP_SHELL); })
       .then(function() { return self.skipWaiting(); })
   );
 });
@@ -33,48 +29,25 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(event) {
-  const request = event.request;
-  if (request.method !== 'GET') return;
-
-  const url = new URL(request.url);
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(function(response) {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-              cache.put('./index.html', copy);
-            });
-          }
-          return response;
-        })
-        .catch(function() {
-          return caches.match('./index.html', { ignoreSearch: true })
-            .then(function(response) {
-              return response || caches.match('./', { ignoreSearch: true });
-            });
-        })
-    );
-    return;
-  }
-
   event.respondWith(
-    caches.match(request, { ignoreSearch: true })
-      .then(function(cached) {
-        if (cached) return cached;
-
-        return fetch(request).then(function(response) {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-              cache.put(request, copy);
-            });
-          }
-          return response;
-        });
+    fetch(event.request)
+      .then(function(response) {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, copy); });
+        }
+        return response;
+      })
+      .catch(function() {
+        return caches.match(event.request, { ignoreSearch: true })
+          .then(function(cached) {
+            return cached || (event.request.mode === 'navigate'
+              ? caches.match('./index.html', { ignoreSearch: true })
+              : undefined);
+          });
       })
   );
 });
