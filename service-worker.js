@@ -1,4 +1,4 @@
-const CACHE_NAME = 'himnarios-mauzi-v4-prueba-50-dias';
+const CACHE_NAME = 'himnarios-mauzi-v5-mensaje-licencia';
 const APP_SHELL = [
   './',
   './index.html',

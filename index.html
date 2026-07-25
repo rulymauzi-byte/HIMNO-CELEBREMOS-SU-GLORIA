@@ -919,7 +919,7 @@ body {
             <img src="icon-192.png" alt="Mauzi" width="88" height="88">
             <h2 id="licenseTitle">Apoye al creador</h2>
         </div>
-        <p class="license-message" id="licenseMessage">Continúa usando la App por Q25.00 para agradecer al creador.</p>
+        <p class="license-message" id="licenseMessage">Continúa usando la App por Q25.00 para agradecer al creador. O pida Gratis</p>
         <div class="license-status" id="licenseStatus">Raúl (Mauzi) · WhatsApp +502 5525 8033</div>
         <label for="deviceCode">ID de su dispositivo</label>
         <output class="device-code" id="deviceCode">GENERANDO…</output>
@@ -1177,7 +1177,7 @@ async function inicializarLicencia() {
         }
         if (ultimaFecha && ahora + 5 * 60 * 1000 < ultimaFecha) {
             mostrarBloqueo(
-                "Continúa usando la App por Q25.00 para agradecer al creador.",
+                "Continúa usando la App por Q25.00 para agradecer al creador. O pida Gratis",
                 "Raúl (Mauzi) · WhatsApp +502 5525 8033"
             );
             return;
@@ -1190,7 +1190,7 @@ async function inicializarLicencia() {
             return;
         }
         mostrarBloqueo(
-            "Continúa usando la App por Q25.00 para agradecer al creador.",
+            "Continúa usando la App por Q25.00 para agradecer al creador. O pida Gratis",
             "Raúl (Mauzi) · WhatsApp +502 5525 8033"
         );
     } catch (error) {
